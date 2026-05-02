@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/tab_manager.dart';
+import 'core/browser_data_manager.dart';
 import 'app/screens/splash_screen.dart';
 import 'app/theme/app_theme.dart';
 
@@ -10,6 +11,7 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => TabManager()..addNewTab()),
+        ChangeNotifierProvider(create: (_) => BrowserDataManager()),
       ],
       child: const ZyroApp(),
     ),

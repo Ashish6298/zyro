@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:provider/provider.dart';
 import 'tab_manager.dart';
+import 'browser_data_manager.dart';
 import 'models/tab_model.dart';
 import '../engine/script_engine.dart';
 
@@ -50,7 +51,12 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
       },
       onLoadStop: (controller, url) async {
         final tabManager = context.read<TabManager>();
-        tabManager.updateTab(widget.tab.id, url: url.toString(), progress: 1.0);
+        final dataManager = context.read<BrowserDataManager>();
+        
+        final title = await controller.getTitle() ?? "New Tab";
+        tabManager.updateTab(widget.tab.id, url: url.toString(), progress: 1.0, title: title);
+        dataManager.addHistory(url.toString(), title);
+        
         await widget.scriptEngine.onPageFinished(controller, url);
       },
       onProgressChanged: (controller, progress) {
@@ -61,6 +67,16 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
         final tabManager = context.read<TabManager>();
         tabManager.updateTab(widget.tab.id, url: url.toString());
         await widget.scriptEngine.onUrlChanged(controller, url);
+      },
+      onDownloadStartRequest: (controller, downloadRequest) async {
+        final dataManager = context.read<BrowserDataManager>();
+        dataManager.addDownload(downloadRequest.url.toString());
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Download started: ${downloadRequest.suggestedFilename ?? 'file'}"),
+            backgroundColor: Colors.cyanAccent.withOpacity(0.8),
+          ),
+        );
       },
       onReceivedError: (controller, request, error) {
         print("WebView Error: ${error.description}");

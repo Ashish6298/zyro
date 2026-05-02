@@ -20,14 +20,10 @@ class BrowserMainScreen extends StatefulWidget {
 
 class _BrowserMainScreenState extends State<BrowserMainScreen> {
   final ScriptEngine _scriptEngine = ScriptEngine();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   void _showCyberMenu(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => const CyberMenu(),
-    );
+    _scaffoldKey.currentState?.openEndDrawer();
   }
 
   @override
@@ -41,11 +37,14 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
         }
 
         return Scaffold(
+          key: _scaffoldKey,
+          endDrawer: const CyberMenu(),
           body: SafeArea(
             bottom: false,
             child: Column(
               children: [
                 GlassAppBar(tab: currentTab),
+                if (tabManager.isFindingInPage) _buildFindBar(tabManager),
                 Expanded(
                   child: IndexedStack(
                     index: tabManager.currentIndex,
@@ -162,6 +161,46 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
           ],
         ),
         child: const Icon(LucideIcons.plus, color: Colors.black, size: 24),
+      ),
+    );
+  }
+
+  Widget _buildFindBar(TabManager tabManager) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: Colors.black26,
+      child: GlassContainer(
+        borderRadius: 12,
+        opacity: 0.1,
+        child: Row(
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: Icon(LucideIcons.search, color: Colors.cyanAccent, size: 18),
+            ),
+            Expanded(
+              child: TextField(
+                autofocus: true,
+                style: GoogleFonts.outfit(color: Colors.white, fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'FIND IN PAGE...',
+                  hintStyle: GoogleFonts.shareTechMono(color: Colors.white24, fontSize: 12),
+                  border: InputBorder.none,
+                ),
+                onChanged: (value) {
+                  tabManager.currentTab?.controller?.findAllAsync(find: value);
+                },
+              ),
+            ),
+            IconButton(
+              icon: const Icon(LucideIcons.x, color: Colors.white38, size: 18),
+              onPressed: () {
+                tabManager.currentTab?.controller?.clearMatches();
+                tabManager.toggleFindInPage();
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

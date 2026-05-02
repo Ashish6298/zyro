@@ -6,10 +6,12 @@ import 'models/tab_model.dart';
 class TabManager extends ChangeNotifier {
   final List<TabModel> _tabs = [];
   int _currentIndex = -1;
+  bool _isFindingInPage = false;
   final _uuid = const Uuid();
 
   List<TabModel> get tabs => _tabs;
   int get currentIndex => _currentIndex;
+  bool get isFindingInPage => _isFindingInPage;
   
   TabModel? get currentTab => _currentIndex != -1 ? _tabs[_currentIndex] : null;
 
@@ -68,5 +70,10 @@ class TabManager extends ChangeNotifier {
       if (progress != null) _tabs[index].updateProgress(progress);
       notifyListeners();
     }
+  }
+
+  void toggleFindInPage() {
+    _isFindingInPage = !_isFindingInPage;
+    notifyListeners();
   }
 }
