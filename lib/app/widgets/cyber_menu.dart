@@ -10,6 +10,7 @@ import '../screens/history_screen.dart';
 import '../screens/bookmarks_screen.dart';
 import '../screens/downloads_screen.dart';
 import '../screens/settings_screen.dart';
+import '../screens/extensions_screen.dart';
 import 'glass_container.dart';
 
 class CyberMenu extends StatelessWidget {
@@ -209,6 +210,17 @@ class CyberMenu extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                      );
+                    },
+                  ),
+                  _buildMenuCard(
+                    context,
+                    icon: LucideIcons.puzzle,
+                    label: 'EXTENSIONS',
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ExtensionsScreen()),
                       );
                     },
                   ),

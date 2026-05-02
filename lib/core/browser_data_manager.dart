@@ -1,17 +1,32 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:uuid/uuid.dart';
-import 'models/history_item.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
+
 import 'models/bookmark_item.dart';
+import 'models/download_item.dart';
+import 'models/history_item.dart';
 
 class BrowserDataManager extends ChangeNotifier {
+  static const MethodChannel _downloadChannel = MethodChannel('zyro/downloads');
+
   final List<HistoryItem> _history = [];
   final List<BookmarkItem> _bookmarks = [];
-  final List<String> _downloads = []; // Simple for now
+  final List<DownloadItem> _downloads = [];
+  final Map<String, Timer> _downloadPollers = {};
   final _uuid = const Uuid();
+
+  DownloadItem? lastFinishedDownload;
 
   List<HistoryItem> get history => List.unmodifiable(_history);
   List<BookmarkItem> get bookmarks => List.unmodifiable(_bookmarks);
-  List<String> get downloads => List.unmodifiable(_downloads);
+  List<DownloadItem> get downloads => List.unmodifiable(_downloads);
 
   void addHistory(String url, String title) {
     if (_history.isNotEmpty && _history.last.url == url) return;
@@ -52,12 +67,334 @@ class BrowserDataManager extends ChangeNotifier {
     return _bookmarks.any((b) => b.url == url);
   }
 
-  void addDownload(String url) {
-    _downloads.add(url);
+  void addDownload(
+    String url, {
+    String title = 'Video Download',
+    String resolution = '720p',
+    String? suggestedFileName,
+    String? mimeType,
+    String? sourceUrl,
+    String? pageUrl,
+    bool isYouTube = false,
+  }) {
+    final normalizedUrl = _normalizeDownloadUrl(
+      url,
+      sourceUrl: sourceUrl,
+      pageUrl: pageUrl,
+      isYouTube: isYouTube,
+    );
+    final item = DownloadItem(
+      id: _uuid.v4(),
+      url: normalizedUrl,
+      title: title,
+      resolution: resolution,
+    );
+    _downloads.insert(0, item);
     notifyListeners();
+
+    Future.microtask(() async {
+      try {
+        if (Platform.isAndroid && !_isYoutubeUrl(normalizedUrl)) {
+          await _startAndroidSystemDownload(
+            item,
+            suggestedFileName: suggestedFileName,
+            mimeType: mimeType,
+          );
+          return;
+        }
+
+        final hasPermission = await _ensureDownloadAccess();
+        if (!hasPermission) {
+          throw const FileSystemException('Storage permission denied');
+        }
+
+        final directory = await _resolveDownloadDirectory();
+        if (directory == null) {
+          throw const FileSystemException('Download directory unavailable');
+        }
+
+        final isAudio = item.resolution.contains('MP3');
+        final subFolder = isAudio ? 'audio' : 'video';
+        final zyroPath = p.join(directory.path, 'zyro', subFolder);
+        final dir = Directory(zyroPath);
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
+        }
+
+        final extension = _resolveExtension(
+          url: normalizedUrl,
+          suggestedFileName: suggestedFileName,
+          mimeType: mimeType,
+          isAudio: isAudio,
+        );
+        final fileName = _buildFileName(item, extension, suggestedFileName: suggestedFileName);
+        final filePath = p.join(zyroPath, fileName);
+
+        await _downloadYoutubeToFile(item, filePath);
+
+        item.filePath = filePath;
+        item.progress = 1.0;
+        item.isCompleted = true;
+        item.isFailed = false;
+        item.errorMessage = null;
+        lastFinishedDownload = item;
+        notifyListeners();
+      } catch (e) {
+        debugPrint('Error in download: $e');
+        item.isCompleted = false;
+        item.isFailed = true;
+        item.errorMessage = e.toString();
+        notifyListeners();
+      }
+    });
+  }
+
+  Future<void> _startAndroidSystemDownload(
+    DownloadItem item, {
+    String? suggestedFileName,
+    String? mimeType,
+  }) async {
+    final isAudio = item.resolution.contains('MP3');
+    final subFolder = isAudio ? 'audio' : 'video';
+    final extension = _resolveExtension(
+      url: item.url,
+      suggestedFileName: suggestedFileName,
+      mimeType: mimeType,
+      isAudio: isAudio,
+    );
+    final fileName = _buildFileName(item, extension, suggestedFileName: suggestedFileName);
+    final result = await _downloadChannel.invokeMapMethod<String, dynamic>(
+      'enqueueDownload',
+      <String, dynamic>{
+        'url': item.url,
+        'title': item.title,
+        'description': item.title,
+        'fileName': fileName,
+        'subDirectory': 'zyro/$subFolder',
+        'mimeType': mimeType ?? _guessMimeType(extension, isAudio),
+      },
+    );
+
+    if (result == null || result['downloadId'] == null) {
+      throw const FileSystemException('Unable to start Android download');
+    }
+
+    item.platformDownloadId = (result['downloadId'] as num).toInt();
+    item.filePath = result['filePath'] as String?;
+    notifyListeners();
+
+    _downloadPollers[item.id]?.cancel();
+    _downloadPollers[item.id] = Timer.periodic(const Duration(milliseconds: 750), (_) async {
+      try {
+        final status = await _downloadChannel.invokeMapMethod<String, dynamic>(
+          'queryDownload',
+          <String, dynamic>{'downloadId': item.platformDownloadId},
+        );
+
+        if (status == null) {
+          return;
+        }
+
+        final downloadedBytes = (status['downloadedBytes'] as num?)?.toInt() ?? 0;
+        final totalBytes = (status['totalBytes'] as num?)?.toInt() ?? 0;
+        final state = status['status'] as String? ?? 'UNKNOWN';
+        final localPath = status['localPath'] as String?;
+
+        item.downloadedBytes = downloadedBytes;
+        item.totalBytes = totalBytes > 0 ? totalBytes : null;
+        if (totalBytes > 0) {
+          item.progress = downloadedBytes / totalBytes;
+        }
+        if (localPath != null && localPath.isNotEmpty) {
+          item.filePath = localPath;
+        }
+
+        if (state == 'SUCCESSFUL') {
+          item.progress = 1.0;
+          item.isCompleted = true;
+          item.isFailed = false;
+          item.errorMessage = null;
+          lastFinishedDownload = item;
+          _downloadPollers.remove(item.id)?.cancel();
+        } else if (state == 'FAILED') {
+          item.isCompleted = false;
+          item.isFailed = true;
+          item.errorMessage = status['reason']?.toString() ?? 'Download failed';
+          _downloadPollers.remove(item.id)?.cancel();
+        }
+
+        notifyListeners();
+      } catch (e) {
+        _downloadPollers.remove(item.id)?.cancel();
+        item.isCompleted = false;
+        item.isFailed = true;
+        item.errorMessage = e.toString();
+        notifyListeners();
+      }
+    });
+  }
+
+  Future<void> _downloadYoutubeToFile(DownloadItem item, String filePath) async {
+    final ytClient = yt.YoutubeExplode();
+    try {
+      final videoId = yt.VideoId.parseVideoId(item.url);
+      if (videoId == null) {
+        throw const FileSystemException('Invalid YouTube video URL');
+      }
+
+      final manifest = await ytClient.videos.streams.getManifest(videoId);
+      final streamInfo = item.resolution.contains('MP3')
+          ? manifest.audioOnly.withHighestBitrate()
+          : manifest.muxed.withHighestBitrate();
+      final stream = ytClient.videos.streams.get(streamInfo);
+      final file = File(filePath);
+      final fileStream = file.openWrite();
+
+      final totalSize = streamInfo.size.totalBytes;
+      item.totalBytes = totalSize;
+      var downloadedCount = 0;
+
+      await for (final data in stream) {
+        fileStream.add(data);
+        downloadedCount += data.length;
+        item.downloadedBytes = downloadedCount;
+        item.progress = downloadedCount / totalSize;
+        notifyListeners();
+      }
+
+      await fileStream.flush();
+      await fileStream.close();
+    } finally {
+      ytClient.close();
+    }
+  }
+
+  Future<Directory?> _resolveDownloadDirectory() async {
+    if (Platform.isAndroid) {
+      final directory = Directory('/storage/emulated/0/Download');
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
+      }
+      return directory;
+    }
+    return getDownloadsDirectory();
+  }
+
+  Future<bool> _ensureDownloadAccess() async {
+    if (!Platform.isAndroid) return true;
+
+    final manageStorage = await Permission.manageExternalStorage.request();
+    if (manageStorage.isGranted) {
+      return true;
+    }
+
+    final storage = await Permission.storage.request();
+    if (storage.isGranted) {
+      return true;
+    }
+
+    final videos = await Permission.videos.request();
+    if (videos.isGranted) {
+      return true;
+    }
+
+    final audio = await Permission.audio.request();
+    return audio.isGranted;
+  }
+
+  bool _isYoutubeUrl(String url) {
+    return url.contains('youtube.com') || url.contains('youtu.be');
+  }
+
+  String _normalizeDownloadUrl(
+    String url, {
+    String? sourceUrl,
+    String? pageUrl,
+    bool isYouTube = false,
+  }) {
+    if (isYouTube) {
+      if (pageUrl != null && _isYoutubeUrl(pageUrl)) {
+        return pageUrl;
+      }
+      if (_isYoutubeUrl(url)) {
+        return url;
+      }
+      if (sourceUrl != null && _isYoutubeUrl(sourceUrl)) {
+        return sourceUrl;
+      }
+    }
+
+    if (url.startsWith('blob:') && pageUrl != null) {
+      return pageUrl;
+    }
+
+    return url;
+  }
+
+  String _buildFileName(
+    DownloadItem item,
+    String extension, {
+    String? suggestedFileName,
+  }) {
+    final baseName = suggestedFileName != null && suggestedFileName.trim().isNotEmpty
+        ? p.basenameWithoutExtension(suggestedFileName)
+        : item.title;
+    final cleanTitle = baseName.replaceAll(RegExp(r'[^\w\s-]+'), '_').trim();
+    return '${cleanTitle.isEmpty ? 'download' : cleanTitle}_${item.id.substring(0, 4)}$extension';
+  }
+
+  String _resolveExtension({
+    required String url,
+    String? suggestedFileName,
+    String? mimeType,
+    required bool isAudio,
+  }) {
+    final fileName = suggestedFileName ?? '';
+    final fromName = p.extension(fileName);
+    if (fromName.isNotEmpty) {
+      return fromName;
+    }
+
+    final fromUrl = p.extension(Uri.parse(url).path);
+    if (fromUrl.isNotEmpty && fromUrl.length <= 5) {
+      return fromUrl;
+    }
+
+    if (mimeType?.contains('mp4') == true) {
+      return '.mp4';
+    }
+    if (mimeType?.contains('webm') == true) {
+      return '.webm';
+    }
+    if (mimeType?.contains('mpeg') == true || mimeType?.contains('mp3') == true) {
+      return '.mp3';
+    }
+
+    return isAudio ? '.mp3' : '.mp4';
+  }
+
+  String _guessMimeType(String extension, bool isAudio) {
+    switch (extension.toLowerCase()) {
+      case '.mp4':
+        return 'video/mp4';
+      case '.webm':
+        return 'video/webm';
+      case '.mkv':
+        return 'video/x-matroska';
+      case '.mp3':
+        return 'audio/mpeg';
+      case '.m4a':
+        return 'audio/mp4';
+      default:
+        return isAudio ? 'audio/*' : 'video/*';
+    }
   }
 
   void clearDownloads() {
+    for (final timer in _downloadPollers.values) {
+      timer.cancel();
+    }
+    _downloadPollers.clear();
     _downloads.clear();
     notifyListeners();
   }

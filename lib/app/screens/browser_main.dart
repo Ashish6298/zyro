@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../core/tab_manager.dart';
+import '../../core/browser_data_manager.dart';
 import '../../core/webview_wrapper.dart';
 import '../../engine/script_engine.dart';
 import '../widgets/cyber_menu.dart';
@@ -28,8 +29,47 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<TabManager>(
-      builder: (context, tabManager, child) {
+    return Consumer2<TabManager, BrowserDataManager>(
+      builder: (context, tabManager, dataManager, child) {
+        // Listen for finished downloads
+        if (dataManager.lastFinishedDownload != null) {
+          final item = dataManager.lastFinishedDownload!;
+          dataManager.lastFinishedDownload = null; // Clear to prevent multiple notifications
+          
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(LucideIcons.checkCircle, color: Colors.greenAccent, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'DOWNLOAD COMPLETE',
+                            style: GoogleFonts.shareTechMono(color: Colors.greenAccent, fontSize: 10, letterSpacing: 2),
+                          ),
+                          Text(
+                            '${item.title} saved to device.',
+                            style: GoogleFonts.outfit(color: Colors.white, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: const Color(0xFF0F172A),
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            );
+          });
+        }
+
         final currentTab = tabManager.currentTab;
 
         if (currentTab == null) {

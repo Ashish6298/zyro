@@ -40,7 +40,10 @@ dependencies:
   uuid: ^4.3.3
   path_provider: ^2.1.2
   path: ^1.9.0
+  permission_handler: ^11.4.0
   share_plus: ^7.2.2
+  video_player: ^2.9.2
+  youtube_explode_dart: ^2.2.2
 
 dev_dependencies:
   flutter_test:
