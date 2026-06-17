@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'globals.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -138,6 +138,7 @@ class BrowserDataManager extends ChangeNotifier {
         item.isFailed = false;
         item.errorMessage = null;
         lastFinishedDownload = item;
+        _showCompletionNotification(item.title);
         notifyListeners();
       } catch (e) {
         debugPrint('Error in download: $e');
@@ -216,6 +217,7 @@ class BrowserDataManager extends ChangeNotifier {
           item.errorMessage = null;
           lastFinishedDownload = item;
           _downloadPollers.remove(item.id)?.cancel();
+          _showCompletionNotification(item.title);
         } else if (state == 'FAILED') {
           item.isCompleted = false;
           item.isFailed = true;
@@ -388,6 +390,74 @@ class BrowserDataManager extends ChangeNotifier {
       default:
         return isAudio ? 'audio/*' : 'video/*';
     }
+  }
+
+  /// Adds an in-progress download entry for a backend-managed download (yt-dlp/ffmpeg).
+  /// This shows the item immediately in the Downloads screen while the backend processes.
+  void addBackendDownload({
+    required String id,
+    required String url,
+    required String title,
+    required String resolution,
+  }) {
+    final item = DownloadItem(
+      id: id,
+      url: url,
+      title: title,
+      resolution: resolution,
+    );
+    _downloads.insert(0, item);
+    notifyListeners();
+  }
+
+  /// Updates progress of a backend-managed download item.
+  void updateBackendDownload(
+    String id, {
+    required double progress,
+    bool isFailed = false,
+    String? errorMessage,
+  }) {
+    final idx = _downloads.indexWhere((d) => d.id == id);
+    if (idx == -1) return;
+    final item = _downloads[idx];
+    item.progress = progress;
+    if (isFailed) {
+      item.isFailed = true;
+      item.errorMessage = errorMessage;
+    }
+    notifyListeners();
+  }
+
+  /// Removes a download item by id (used when handing off from backend to system download).
+  void removeDownload(String id) {
+    _downloads.removeWhere((d) => d.id == id);
+    _downloadPollers.remove(id)?.cancel();
+    notifyListeners();
+  }
+
+  void _showCompletionNotification(String title) {
+    globalScaffoldKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.download_done_rounded, color: Colors.cyanAccent, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Download complete: $title',
+                style: const TextStyle(color: Colors.white),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF1E293B),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 5),
+      ),
+    );
   }
 
   void clearDownloads() {

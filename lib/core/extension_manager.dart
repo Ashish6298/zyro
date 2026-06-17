@@ -5,9 +5,9 @@ import 'models/extension_model.dart';
 class ExtensionManager extends ChangeNotifier {
   final List<ExtensionModel> _installedExtensions = [
     ExtensionModel(
-      id: 'ad_blocker',
-      name: 'Ad Blocker',
-      description: 'Blocks annoying ads on YouTube and other websites.',
+      id: 'ad_blocker_downloader',
+      name: 'Ad Blocker & Downloader',
+      description: 'Blocks ads and detects/downloads videos on YouTube and other websites.',
       version: '1.0.0',
       icon: LucideIcons.shieldAlert,
       isEnabled: true,
@@ -15,13 +15,6 @@ class ExtensionManager extends ChangeNotifier {
   ];
 
   final List<ExtensionModel> _availableExtensions = [
-    ExtensionModel(
-      id: 'video_downloader',
-      name: 'Video Downloader',
-      description: 'Detects videos on any page and provides high-quality download options.',
-      version: '1.0.5',
-      icon: LucideIcons.download,
-    ),
     ExtensionModel(
       id: 'dark_mode',
       name: 'Dark Reader',

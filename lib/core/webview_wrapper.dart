@@ -6,8 +6,10 @@ import 'browser_data_manager.dart';
 import 'extension_manager.dart';
 import 'models/tab_model.dart';
 import '../engine/script_engine.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import '../features/video_downloader/widgets/quality_selector_sheet.dart';
+
+import '../features/video_downloader/controllers/download_controller.dart';
+import '../features/video_downloader/services/video_detection_service.dart';
 
 class WebViewWrapper extends StatefulWidget {
   final TabModel tab;
@@ -24,14 +26,13 @@ class WebViewWrapper extends StatefulWidget {
 }
 
 class _WebViewWrapperState extends State<WebViewWrapper> {
-  bool _lastAdBlockState = false;
   bool _lastDownloaderState = false;
 
   @override
   Widget build(BuildContext context) {
     final extensionManager = context.watch<ExtensionManager>();
-    final isAdBlockerEnabled = extensionManager.isExtensionEnabled('ad_blocker');
-    final isVideoDownloaderEnabled = extensionManager.isExtensionEnabled('video_downloader');
+    final isAdBlockerEnabled = extensionManager.isExtensionEnabled('ad_blocker_downloader');
+    final isVideoDownloaderEnabled = extensionManager.isExtensionEnabled('ad_blocker_downloader');
     
     // Sync script engine state
     widget.scriptEngine.isAdBlockerEnabled = isAdBlockerEnabled;
@@ -41,7 +42,6 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
     if (isVideoDownloaderEnabled && !_lastDownloaderState) {
       widget.tab.controller?.evaluateJavascript(source: widget.scriptEngine.videoDownloaderScript);
     }
-    _lastAdBlockState = isAdBlockerEnabled;
     _lastDownloaderState = isVideoDownloaderEnabled;
 
     return InAppWebView(
@@ -96,6 +96,22 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
               pageUrl: data['pageUrl'],
               isYouTube: data['isYouTube'] == true,
             );
+          },
+        );
+
+        controller.addJavaScriptHandler(
+          handlerName: 'updatePlayingVideo',
+          callback: (args) {
+            if (!mounted) return;
+            final data = args[0];
+            final downloadCtrl = context.read<DownloadController>();
+            if (data == null) {
+              downloadCtrl.updateCurrentPlayingVideo(null);
+            } else {
+              final service = VideoDetectionService();
+              final playingVideo = service.parseVideoState(Map<String, dynamic>.from(data));
+              downloadCtrl.updateCurrentPlayingVideo(playingVideo);
+            }
           },
         );
       },
@@ -165,129 +181,11 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Color(0xFF0F172A),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(LucideIcons.download, color: Colors.cyanAccent),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'DOWNLOAD OPTIONS',
-                    style: GoogleFonts.shareTechMono(
-                      color: Colors.cyanAccent,
-                      fontSize: 20,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.outfit(color: Colors.white60, fontSize: 12),
-            ),
-            const SizedBox(height: 24),
-            _buildDownloadSection(title, 'VIDEO QUALITY', [
-              '144p', '360p', '720p (HD)', '1080p (FHD)', '4K (Ultra HD)'
-            ], Colors.cyanAccent, url, sourceUrl: sourceUrl, pageUrl: pageUrl, isYouTube: isYouTube),
-            const SizedBox(height: 16),
-            _buildDownloadSection(title, 'AUDIO ONLY', [
-              'MP3 (128kbps)', 'MP3 (320kbps)'
-            ], Colors.purpleAccent, url, sourceUrl: sourceUrl, pageUrl: pageUrl, isYouTube: isYouTube),
-            const SizedBox(height: 32),
-          ],
-        ),
+      isScrollControlled: true,
+      builder: (context) => QualitySelectorSheet(
+        url: pageUrl ?? url,
+        title: title,
       ),
-    );
-  }
-
-  Widget _buildDownloadSection(
-    String videoTitle,
-    String sectionTitle,
-    List<String> options,
-    Color color,
-    String url, {
-    String? sourceUrl,
-    String? pageUrl,
-    bool isYouTube = false,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          sectionTitle,
-          style: GoogleFonts.shareTechMono(
-            color: color.withOpacity(0.5),
-            fontSize: 12,
-            letterSpacing: 4,
-          ),
-        ),
-        const SizedBox(height: 12),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: options.map((opt) => Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: InkWell(
-                onTap: () {
-                  Navigator.pop(context);
-                  context.read<BrowserDataManager>().addDownload(
-                    url,
-                    title: videoTitle,
-                    resolution: opt,
-                    sourceUrl: sourceUrl,
-                    pageUrl: pageUrl,
-                    isYouTube: isYouTube,
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          const Icon(LucideIcons.download, color: Colors.cyanAccent, size: 18),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Downloading $videoTitle ($opt)...',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      backgroundColor: const Color(0xFF0F172A),
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: color.withOpacity(0.3)),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    opt,
-                    style: GoogleFonts.shareTechMono(color: Colors.white, fontSize: 12),
-                  ),
-                ),
-              ),
-            )).toList(),
-          ),
-        ),
-      ],
     );
   }
 }

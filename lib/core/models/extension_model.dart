@@ -1,4 +1,3 @@
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter/widgets.dart';
 
 class ExtensionModel {

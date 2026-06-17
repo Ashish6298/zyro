@@ -12,6 +12,8 @@ import '../widgets/glass_app_bar.dart';
 import '../widgets/glass_container.dart';
 import 'tab_switcher.dart';
 
+import '../../features/video_downloader/widgets/floating_download_button.dart';
+
 class BrowserMainScreen extends StatefulWidget {
   const BrowserMainScreen({super.key});
 
@@ -81,23 +83,28 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
           endDrawer: const CyberMenu(),
           body: SafeArea(
             bottom: false,
-            child: Column(
+            child: Stack(
               children: [
-                GlassAppBar(tab: currentTab),
-                if (tabManager.isFindingInPage) _buildFindBar(tabManager),
-                Expanded(
-                  child: IndexedStack(
-                    index: tabManager.currentIndex,
-                    children: tabManager.tabs.map((tab) {
-                      return WebViewWrapper(
-                        key: ValueKey(tab.id),
-                        tab: tab,
-                        scriptEngine: _scriptEngine,
-                      );
-                    }).toList(),
-                  ),
+                Column(
+                  children: [
+                    GlassAppBar(tab: currentTab),
+                    if (tabManager.isFindingInPage) _buildFindBar(tabManager),
+                    Expanded(
+                      child: IndexedStack(
+                        index: tabManager.currentIndex,
+                        children: tabManager.tabs.map((tab) {
+                          return WebViewWrapper(
+                            key: ValueKey(tab.id),
+                            tab: tab,
+                            scriptEngine: _scriptEngine,
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    _buildBottomNav(tabManager),
+                  ],
                 ),
-                _buildBottomNav(tabManager),
+                const FloatingDownloadButton(),
               ],
             ),
           ),

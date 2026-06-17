@@ -8,7 +8,7 @@ import '../../core/tab_manager.dart';
 import '../../core/browser_data_manager.dart';
 import '../screens/history_screen.dart';
 import '../screens/bookmarks_screen.dart';
-import '../screens/downloads_screen.dart';
+import '../../features/download_library/screens/downloads_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/extensions_screen.dart';
 import 'glass_container.dart';
