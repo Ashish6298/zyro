@@ -1,0 +1,17 @@
+{
+  "name": "zyro-downloader-backend",
+  "version": "1.0.0",
+  "description": "Backend API for extracting and downloading adaptive video streams for Zyro Browser",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "fluent-ffmpeg": "^2.1.3",
+    "uuid": "^9.0.1",
+    "youtube-dl-exec": "^3.0.2"
+  }
+}
