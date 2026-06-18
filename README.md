@@ -10,43 +10,89 @@
 
 **Zyro Browser** is a premium, high-performance, real-time web browser styled around a futuristic Cyber-Bento design. Featuring a decentralized, sandboxed extension engine, system-level content blockers, and an adaptive video extraction system powered by a companion Node.js backend. It unites a high-fidelity **Flutter Mobile Client** and a high-performance **Node.js/FFmpeg Microservice** into a singular, cohesive surfing environment.
 
-[Explore Frontend](file:///d:/zyro/zyro-frontend) • [Explore Backend](file:///d:/zyro/zyro-backend) • [View Architecture](#-architecture-overview)
+<br></br>
 
----
+## 🌌 Core Modules
 
-## 🌌 Key Highlights & Modules
+<table>
+<tr>
+<td width="33%" valign="top">
 
-### 📱 Cyber-Bento UI Shell ("zyro-frontend")
-The user interface follows a modern dark/light system designed to stand out, leveraging premium glassmorphism, depth-based layout, and a floating Bento Dock navigation unit.
-1. **Interactive Bento Dock Navigation**:
-   - Floating navigation bar at the bottom of the viewport with responsive context actions (Back, Forward, Refresh, Home, Tabs Panel).
-   - Glassmorphic backdrop blurring (`backdrop-filter`) styled with cyber-neon contours.
-2. **Multiplexed Tab Manager**:
-   - Handles multi-tab surfing state using Flutter's `provider` pattern.
-   - Dedicated dashboard sheets to list open viewports, create new instances, or clean up active sessions.
-3. **Advanced History & Bookmarks**:
-   - Local sqlite/file persistent records tracking browsing histories and favorites.
-   - Easy action chips allowing instant jumps back into previous domains.
+### 📱 Cyber-Bento UI
 
-### 🛡️ Sandboxed Extension & Ad-Blocker Core
-The system features a custom modular registry (`ExtensionManager`) allowing dynamic script injection and network-level content filters.
-1. **Pre-installed Ad-Blocker**:
-   - Multi-layer blocking mechanism integrating `ContentBlocker` rules directly within the WebView engine to stop advertisements, tracker pixels, and promotional scripts on-the-fly.
-   - CSS/JS rules injection that formats layouts post-load, providing a clean ad-free environment.
-2. **Video Sniffer & Extractor Extension**:
-   - Background analyzer that scans incoming network requests, intercepts video stream sources, and renders a floating Download Option HUD when a valid stream is discovered.
+A futuristic browser interface designed around glassmorphism, fluid navigation, and premium mobile usability.
 
-### ⚙️ Companion Media Extraction Pipeline ("zyro-backend")
-A high-performance media parsing server that communicates with the Flutter client to transcode, download, and distribute media assets.
-1. **Adaptive Media Resolution**:
-   - Uses `youtube-dl-exec` underneath to fetch and analyze page schemas, resolving direct high-quality video and audio stream links.
-2. **FFmpeg Transcoding Pipeline**:
-   - Interlinks audio and video streams and merges them dynamically using a `fluent-ffmpeg` worker queue to create a unified `.mp4` file.
-3. **Static File Server**:
-   - Hosts static downloads, allowing the Flutter UI client to play the extracted videos locally or trigger local mobile saves.
+#### ✨ Features
 
----
+* Floating Bento Dock Navigation
+* Multi-Tab Browser Management
+* Modern Dark & Light Themes
+* Glassmorphic UI Components
+* Smart History Tracking
+* Persistent Bookmarks System
+* Quick Navigation Actions
+* Responsive Mobile Experience
 
+</td>
+
+<td width="33%" valign="top">
+
+### 🛡️ Extension Engine
+
+A sandboxed extension ecosystem built for security, customization, and real-time browser enhancements.
+
+#### ✨ Features
+
+* Dynamic Extension Registry
+* Script Injection Framework
+* Network-Level Content Filters
+* Built-In Ad Blocker
+* Tracker & Popup Protection
+* CSS/JS Page Cleanup
+* Floating Download HUD
+* Real-Time Stream Detection
+
+</td>
+
+<td width="33%" valign="top">
+
+### ⚙️ Media Pipeline
+
+A dedicated Node.js media backend responsible for extraction, transcoding, and file delivery.
+
+#### ✨ Features
+
+* Adaptive Resolution Detection
+* Video & Audio Stream Analysis
+* FFmpeg Processing Pipeline
+* Automatic Stream Merging
+* Background Download Queue
+* Static Download Hosting
+* Local Playback Support
+* Device Storage Integration
+
+</td>
+</tr>
+</table>
+
+
+
+<br> </br>
+### 🚀 What Makes Zyro Different?
+
+| Capability               | Description                                                               |
+| ------------------------ | ------------------------------------------------------------------------- |
+| 🎨 Cyber-Bento Design    | Premium futuristic interface inspired by modern operating systems         |
+| 🛡️ Native Ad Blocking   | Blocks ads, trackers, and intrusive scripts directly inside the WebView   |
+| 🎬 Smart Video Detection | Detects playable media streams and exposes download options automatically |
+| ⚡ High Performance       | Flutter frontend paired with a lightweight Node.js backend                |
+| 🔌 Extension Ecosystem   | Custom sandboxed extension framework designed for future expansion        |
+| 📥 Media Downloads       | Download, process, store, and play media directly from the browser        |
+
+✨ Zyro Browser combines a modern browser engine, a customizable extension platform, and a powerful media processing pipeline into a single seamless experience.
+
+
+<br></br>
 ## 🧭 Architecture Overview
 
 The interaction flow between the sandboxed client, the extension engine, and the video downloader microservice is structured as follows:
@@ -57,51 +103,96 @@ The interaction flow between the sandboxed client, the extension engine, and the
 
 *✨ Live data-flow animation — glowing dots travel the connector lines to show requests, messages, and files moving through the system in real time.*
 
+<br></br>
+
+## 📦 Project Structure
+
+```text
+zyro/
+│
+├── 📱 zyro-frontend/
+│   │
+│   ├── lib/
+│   │   ├── core/
+│   │   │   ├── tab_manager.dart
+│   │   │   ├── webview_wrapper.dart
+│   │   │   ├── extension_manager.dart
+│   │   │   └── browser_data_manager.dart
+│   │   │
+│   │   ├── app/
+│   │   │   ├── screens/
+│   │   │   └── widgets/
+│   │   │
+│   │   └── features/
+│   │       ├── downloads/
+│   │       ├── media_player/
+│   │       └── browser_extensions/
+│   │
+│   ├── assets/
+│   ├── android/
+│   ├── ios/
+│   └── pubspec.yaml
+│
+├── ⚙️ zyro-backend/
+│   │
+│   ├── src/
+│   │   ├── routes/
+│   │   │   └── download.routes.js
+│   │   │
+│   │   ├── services/
+│   │   │   ├── fileManager.service.js
+│   │   │   └── downloadQueue.service.js
+│   │   │
+│   │   └── server.js
+│   │
+│   ├── downloads/
+│   ├── temp/
+│   └── package.json
+│
+├── architecture.svg
+├── animation.svg
+├── badges.svg
+└── README.md
+```
+
+### 📱 Frontend (Flutter)
+
+| Module         | Purpose                                             |
+| -------------- | --------------------------------------------------- |
+| `core/`        | Browser engine, tab management, extensions, storage |
+| `app/screens/` | Browser pages, settings, bookmarks, downloads       |
+| `app/widgets/` | Cyber-Bento UI components and reusable widgets      |
+| `features/`    | Media player, downloads, extension modules          |
+| `assets/`      | Icons, animations, images, and UI resources         |
+
 ---
 
-## 📦 Detailed Project Structure
+### ⚙️ Backend (Node.js)
 
-### 📱 [Frontend - zyro-frontend](file:///d:/zyro/zyro-frontend)
-Contains the Flutter application logic and Cyber-Bento styling:
-*   [lib/core/](file:///d:/zyro/zyro-frontend/lib/core): Core infrastructure classes.
-    *   [tab_manager.dart](file:///d:/zyro/zyro-frontend/lib/core/tab_manager.dart): Multiplexes browser tabs using a state provider.
-    *   [webview_wrapper.dart](file:///d:/zyro/zyro-frontend/lib/core/webview_wrapper.dart): Configures the underlying viewport, handles user gestures, and links JavaScript channels.
-    *   [extension_manager.dart](file:///d:/zyro/zyro-frontend/lib/core/extension_manager.dart): Oversees external scripts and manages adblocking filters.
-    *   [browser_data_manager.dart](file:///d:/zyro/zyro-frontend/lib/core/browser_data_manager.dart): Stores History, Bookmarks, and Downloads local databases.
-*   [lib/app/](file:///d:/zyro/zyro-frontend/lib/app): Interface views and design modules.
-    *   `screens/`: Dashboard sheets for Browser viewports, Bookmarks records, History sheets, and Extensions registry.
-    *   `widgets/`: Cyber-Bento glassmorphism structures, neon indicators, dynamic badges.
-*   [lib/features/](file:///d:/zyro/zyro-frontend/lib/features): Subsystems including media player controls and download managers.
-
-### ⚙️ [Backend - zyro-backend](file:///d:/zyro/zyro-backend)
-Provides media parsing and transcoding services:
-*   [src/server.js](file:///d:/zyro/zyro-backend/src/server.js): Root setup configuration, serving assets and routing API controllers.
-*   [src/routes/download.routes.js](file:///d:/zyro/zyro-backend/src/routes/download.routes.js): Mapping routes for requests:
-    *   `POST /api/video/metadata`: Resolves page source to retrieve details (Thumbnails, Audio/Video Streams).
-    *   `POST /api/video/download`: Dispatches background download pipeline worker.
-    *   `GET /api/video/status/:taskId`: Returns download status, transfer rate, and percentage.
-*   [src/services/](file:///d:/zyro/zyro-backend/src/services): Interacts with stream parsing binaries and file paths.
-    *   `fileManager.service.js`: Manages directory generation and cleanup operations.
-    *   `downloadQueue.service.js`: Resolves stream endpoints and pipes them through FFmpeg.
+| Module       | Purpose                                              |
+| ------------ | ---------------------------------------------------- |
+| `server.js`  | Express application entry point                      |
+| `routes/`    | API endpoints for metadata and downloads             |
+| `services/`  | Stream extraction, queue processing, file management |
+| `downloads/` | Completed media storage                              |
+| `temp/`      | Temporary processing and FFmpeg workspace            |
 
 ---
 
-## 🛠️ Technology Stack & Dependencies
+### 🔥 Core Components
 
-| Component | Technology | Purpose |
-| :--- | :--- | :--- |
-| **Frontend UI Shell** | **Flutter SDK (Dart)** | Immersive, high-performance cross-platform application |
-| | **Provider** | State management, caching, and multi-tab reactivity |
-| | **InAppWebView** | Native browser viewport substrate & JS hooks |
-| | **Google Fonts** | Outfit & Inter typography configurations |
-| | **Lucide Icons** | Premium neon vector icons library |
-| **Backend Core** | **Node.js (Express)** | Media stream resolution microservice |
-| | **youtube-dl-exec** | Page schema analysis and stream extraction |
-| | **fluent-ffmpeg** | Dynamic video/audio stream muxer and transcoder |
-| | **CORS & Express Static** | Asset hosting and cross-origin resource sharing |
+| Component              | Responsibility                                  |
+| ---------------------- | ----------------------------------------------- |
+| `TabManager`           | Multi-tab browser session management            |
+| `WebViewWrapper`       | WebView configuration and JS bridge integration |
+| `ExtensionManager`     | Ad-blocking and extension execution             |
+| `BrowserDataManager`   | History, bookmarks, downloads persistence       |
+| `DownloadQueueService` | Media extraction and processing workflow        |
+| `FileManagerService`   | File creation, cleanup, and storage management  |
 
----
+💡 The architecture is intentionally split into a lightweight Flutter client and a dedicated Node.js media-processing backend, ensuring smooth browsing performance while handling media extraction and transcoding separately.
 
+<br></br>
 ## 🚀 Installation & Running
 
 ### Prerequisites
@@ -147,26 +238,101 @@ Provides media parsing and transcoding services:
 
 ---
 
-## 📜 Advanced Settings & WebView Tweaks
+<br></br>
+## ⚡ Browser Engine Optimizations
 
-To deliver a flawless user experience, several key enhancements were configured in the underlying WebView core:
-- **Popups & Redirects**: Enabled `javaScriptCanOpenWindowsAutomatically` and `supportMultipleWindows` settings. This allows search results and external redirects to open smoothly within the sandbox.
-- **Address Bar Centering**: Integrated `TextAlignVertical.center` and `isCollapsed: true` styling inside the Flutter search field. This keeps the active URL aligned perfectly in the bar.
-- **Dynamic Splash**: Employs a text-based, platform-independent splash loader to prevent runtime filesystem errors during initial device checks.
+Behind the scenes, Zyro Browser includes a collection of performance, stability, and usability enhancements designed to create a smoother browsing experience across all supported devices.
 
----
+<table>
+<tr>
+<td width="33%" valign="top">
 
-## 👨‍💻 Developer & Contact Info
+### 🌐 Navigation Engine
 
-Feel free to connect or reach out for inquiries, feedback, or collaborations:
+* Seamless popup handling
+* Multi-window support
+* Improved redirect management
+* Better compatibility with modern websites
 
-- **GitHub Profile**: [@ashish6298](https://github.com/ashish6298)
-- **LinkedIn Profile**: [Ashish Goswami](https://www.linkedin.com/in/ashish-goswami-58797a24a/)
-- **Developer Portfolio**: [ashishgoswami.dev](https://portfolio-omega-sand-67.vercel.app/)
-- **Email Contact**: [ashishgoswami1013@gmail.com](mailto:ashishgoswami1013@gmail.com)
+</td>
 
----
+<td width="33%" valign="top">
+
+### 🎯 User Experience
+
+* Optimized address bar alignment
+* Consistent navigation behavior
+* Responsive interaction feedback
+* Smooth viewport transitions
+
+</td>
+
+<td width="33%" valign="top">
+
+### 🚀 Performance & Stability
+
+* Fast application startup
+* Lightweight splash initialization
+* Reduced runtime overhead
+* Improved session reliability
+
+</td>
+
+</tr>
+</table>
+
+💡 These optimizations work behind the scenes to ensure faster page rendering, smoother navigation, better compatibility, and a more reliable browsing experience.
+
+
+<br></br>
+## 👨‍💻 Developer
 
 <div align="center">
-  <sub>Created &amp; Optimized with 🌐 &amp; 🧬 by Antigravity</sub>
+
+### Ashish Goswami
+
+<br/>
+
+<p align="center">
+
+<a href="mailto:ashishgoswami1013@gmail.com">
+<img src="https://img.icons8.com/fluency/48/gmail-new.png" width="40"/>
+</a>
+
+
+<a href="https://www.linkedin.com/in/ashish-goswami-58797a24a">
+<img src="https://img.icons8.com/fluency/48/linkedin.png" width="40"/>
+</a>
+
+<a href="https://www.instagram.com/a.s.h.i.s.h__g.o.s.w.a.m.i">
+<img src="https://img.icons8.com/fluency/48/instagram-new.png" width="40"/>
+</a>
+
+<a href="https://portfolio-omega-sand-67.vercel.app">
+<img src="https://img.icons8.com/fluency/48/domain.png" width="40"/>
+</a>
+
+</p>
+
+<br/>
+
+*"Passionate about building modern applications, browser technologies, and user-focused digital products."*
+
 </div>
+
+---
+
+
+<div align="center">
+
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:5B8FB9,50:B6EADA,100:301E67&height=3&section=footer" width="220"/>
+
+<br/>
+
+<sub>
+🌐 Built with Flutter, Node.js & FFmpeg • Crafted by Ashish Goswami
+</sub>
+
+</div>
+
+
