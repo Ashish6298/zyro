@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../video_downloader/models/downloaded_video.dart';
 
-class DownloadedVideoCard extends StatelessWidget {
+class DownloadedVideoCard extends StatefulWidget {
   final DownloadedVideo video;
   final VoidCallback onPlay;
   final VoidCallback onDelete;
@@ -15,6 +15,13 @@ class DownloadedVideoCard extends StatelessWidget {
     required this.onPlay,
     required this.onDelete,
   });
+
+  @override
+  State<DownloadedVideoCard> createState() => _DownloadedVideoCardState();
+}
+
+class _DownloadedVideoCardState extends State<DownloadedVideoCard> {
+  double _scale = 1.0;
 
   String _formatSize(int bytes) {
     if (bytes <= 0) return '0 B';
@@ -49,164 +56,191 @@ class DownloadedVideoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final file = File(video.localFilePath);
+    final file = File(widget.video.localFilePath);
     final fileExists = file.existsSync();
 
-    return Container(
-      height: 96,
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: fileExists 
-              ? theme.dividerColor.withOpacity(isDark ? 0.1 : 0.4) 
-              : theme.colorScheme.error.withOpacity(0.3),
-        ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Thumbnail area
-            Container(
-              width: 100,
-              color: isDark ? Colors.black26 : Colors.black.withOpacity(0.04),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  if (video.thumbnailPath.isNotEmpty && video.thumbnailPath.startsWith('http'))
-                    Image.network(
-                      video.thumbnailPath,
-                      fit: BoxFit.cover,
-                      width: 100,
-                      height: double.infinity,
-                      errorBuilder: (context, _, __) => Icon(LucideIcons.video, color: theme.colorScheme.primary, size: 28),
-                    )
-                  else
-                    Icon(LucideIcons.video, color: theme.colorScheme.primary, size: 28),
-                  if (video.duration > 0)
-                    Positioned(
-                      bottom: 4,
-                      right: 4,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.black87,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          _formatDuration(video.duration),
-                          style: GoogleFonts.outfit(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                  if (!fileExists)
-                    Container(
-                      color: Colors.black54,
-                      child: Center(
-                        child: Icon(LucideIcons.alertOctagon, color: theme.colorScheme.error, size: 24),
-                      ),
-                    ),
-                ],
-              ),
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _scale = 0.98),
+      onTapUp: (_) => setState(() => _scale = 1.0),
+      onTapCancel: () => setState(() => _scale = 1.0),
+      child: AnimatedScale(
+        scale: _scale,
+        duration: const Duration(milliseconds: 150),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          decoration: BoxDecoration(
+            color: isDark ? theme.cardColor.withOpacity(0.4) : theme.cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: fileExists
+                  ? (isDark ? theme.dividerColor.withOpacity(0.06) : theme.dividerColor.withOpacity(0.4))
+                  : theme.colorScheme.error.withOpacity(0.3),
+              width: 1.2,
             ),
-            // Content details
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      video.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
-                        color: fileExists ? theme.colorScheme.onBackground : theme.colorScheme.onBackground.withOpacity(0.4),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
+            boxShadow: [
+              BoxShadow(
+                color: isDark ? Colors.black.withOpacity(0.25) : Colors.black.withOpacity(0.03),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                // Thumbnail area with aspect ratio
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: 110,
+                    height: 68,
+                    color: isDark ? Colors.black38 : Colors.black.withOpacity(0.04),
+                    child: Stack(
+                      alignment: Alignment.center,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
+                        if (widget.video.thumbnailPath.isNotEmpty && widget.video.thumbnailPath.startsWith('http'))
+                          Image.network(
+                            widget.video.thumbnailPath,
+                            fit: BoxFit.cover,
+                            width: 110,
+                            height: 68,
+                            errorBuilder: (context, _, __) => Icon(LucideIcons.video, color: theme.colorScheme.primary, size: 24),
+                          )
+                        else
+                          Icon(LucideIcons.video, color: theme.colorScheme.primary, size: 24),
+                        if (widget.video.duration > 0)
+                          Positioned(
+                            bottom: 4,
+                            right: 4,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.75),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                _formatDuration(widget.video.duration),
+                                style: GoogleFonts.outfit(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                              ),
+                            ),
                           ),
-                          child: Text(
-                            video.quality,
-                            style: GoogleFonts.outfit(color: theme.colorScheme.primary, fontSize: 9, fontWeight: FontWeight.bold),
+                        if (!fileExists)
+                          Container(
+                            color: Colors.black54,
+                            child: Center(
+                              child: Icon(LucideIcons.alertOctagon, color: theme.colorScheme.error, size: 22),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _formatSize(video.fileSize),
-                          style: GoogleFonts.outfit(color: theme.colorScheme.onBackground.withOpacity(0.4), fontSize: 10),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _formatDate(video.downloadedAt),
-                          style: GoogleFonts.outfit(color: theme.colorScheme.onBackground.withOpacity(0.4), fontSize: 10),
-                        ),
                       ],
                     ),
-                    if (!fileExists)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2.0),
-                        child: Text(
-                          'Missing file error',
-                          style: GoogleFonts.outfit(color: theme.colorScheme.error, fontSize: 9, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Content Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        widget.video.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.outfit(
+                          color: fileExists ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.4),
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          height: 1.2,
                         ),
                       ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              widget.video.quality,
+                              style: GoogleFonts.outfit(
+                                color: theme.colorScheme.primary,
+                                fontSize: 8,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            _formatSize(widget.video.fileSize),
+                            style: GoogleFonts.outfit(
+                              color: theme.colorScheme.onSurface.withOpacity(0.4),
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            _formatDate(widget.video.downloadedAt),
+                            style: GoogleFonts.outfit(
+                              color: theme.colorScheme.onSurface.withOpacity(0.4),
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (!fileExists)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            'Missing file error',
+                            style: GoogleFonts.outfit(color: theme.colorScheme.error, fontSize: 8, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // Actions Section
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        LucideIcons.play,
+                        color: fileExists ? const Color(0xFF34D399) : theme.colorScheme.onSurface.withOpacity(0.2),
+                        size: 16,
+                      ),
+                      style: IconButton.styleFrom(
+                        backgroundColor: fileExists 
+                            ? const Color(0xFF34D399).withOpacity(0.08)
+                            : theme.colorScheme.onSurface.withOpacity(0.02),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.all(8),
+                      ),
+                      onPressed: fileExists ? widget.onPlay : null,
+                    ),
+                    const SizedBox(width: 6),
+                    IconButton(
+                      icon: Icon(LucideIcons.trash2, color: theme.colorScheme.error.withOpacity(0.85), size: 16),
+                      style: IconButton.styleFrom(
+                        backgroundColor: theme.colorScheme.error.withOpacity(0.08),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.all(8),
+                      ),
+                      onPressed: widget.onDelete,
+                    ),
                   ],
                 ),
-              ),
+              ],
             ),
-            // Actions
-            Container(
-              width: 48,
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(color: theme.dividerColor.withOpacity(isDark ? 0.1 : 0.3)),
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  InkWell(
-                    onTap: fileExists ? onPlay : null,
-                    borderRadius: BorderRadius.circular(24),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Icon(
-                        LucideIcons.play,
-                        color: fileExists ? Colors.green : theme.colorScheme.onBackground.withOpacity(0.2),
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  InkWell(
-                    onTap: onDelete,
-                    borderRadius: BorderRadius.circular(24),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Icon(
-                        LucideIcons.trash2,
-                        color: theme.colorScheme.error,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

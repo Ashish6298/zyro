@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:uuid/uuid.dart';
 import 'models/tab_model.dart';
+import 'globals.dart';
 
 class TabManager extends ChangeNotifier {
   final List<TabModel> _standaloneTabs = [];
@@ -74,6 +75,49 @@ class TabManager extends ChangeNotifier {
         addNewTab();
       } else {
         _currentIndex = 0;
+      }
+
+      // Show Exit Incognito Mode Notification
+      try {
+        globalScaffoldKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Incognito Mode Ended',
+                  style: TextStyle(
+                    fontFamily: 'Outfit',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Private browsing has ended. Temporary cookies, cache, and site data have been wiped.',
+                  style: TextStyle(
+                    fontFamily: 'Outfit',
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.85),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.indigo.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'Got it',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      } catch (e) {
+        print("Error showing Incognito exit snackbar: $e");
       }
     } else {
       // Switching to Incognito mode:
@@ -208,6 +252,13 @@ class TabManager extends ChangeNotifier {
         }
       } else {
         _standaloneTabs.remove(tab);
+      }
+
+      if (_isGlobalIncognito) {
+        final hasAnyIncognitoLeft = tabs.any((t) => t.isIncognito);
+        if (!hasAnyIncognitoLeft) {
+          setGlobalIncognito(false);
+        }
       }
 
       final remainingTabs = tabs;
