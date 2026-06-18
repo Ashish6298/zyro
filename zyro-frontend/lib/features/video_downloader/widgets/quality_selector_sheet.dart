@@ -55,14 +55,16 @@ class _QualitySelectorSheetState extends State<QualitySelectorSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final controller = context.read<DownloadController>();
     final dataManager = context.read<BrowserDataManager>();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      decoration: const BoxDecoration(
-        color: Color(0xFF0F172A),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: SafeArea(
         child: Column(
@@ -71,21 +73,22 @@ class _QualitySelectorSheetState extends State<QualitySelectorSheet> {
           children: [
             Row(
               children: [
-                const Icon(LucideIcons.download, color: Colors.cyanAccent),
+                Icon(LucideIcons.download, color: theme.colorScheme.primary),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'DOWNLOAD OPTIONS',
-                    style: GoogleFonts.shareTechMono(
-                      color: Colors.cyanAccent,
-                      fontSize: 20,
-                      letterSpacing: 2,
+                    style: GoogleFonts.outfit(
+                      color: theme.colorScheme.onBackground,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
                     ),
                   ),
                 ),
                 if (!_isLoading)
                   IconButton(
-                    icon: const Icon(LucideIcons.refreshCw, color: Colors.white60, size: 16),
+                    icon: Icon(LucideIcons.refreshCw, color: theme.colorScheme.onBackground.withOpacity(0.5), size: 16),
                     onPressed: () {
                       setState(() {
                         _isLoading = true;
@@ -101,14 +104,14 @@ class _QualitySelectorSheetState extends State<QualitySelectorSheet> {
               widget.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.outfit(color: Colors.white60, fontSize: 12),
+              style: GoogleFonts.outfit(color: theme.colorScheme.onBackground.withOpacity(0.6), fontSize: 12),
             ),
             const SizedBox(height: 24),
             if (_isLoading)
-              const Center(
+              Center(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 40),
-                  child: CircularProgressIndicator(color: Colors.cyanAccent),
+                  padding: const EdgeInsets.symmetric(vertical: 40),
+                  child: CircularProgressIndicator(color: theme.colorScheme.primary),
                 ),
               )
             else if (_error != null)
@@ -117,12 +120,12 @@ class _QualitySelectorSheetState extends State<QualitySelectorSheet> {
                   padding: const EdgeInsets.symmetric(vertical: 30),
                   child: Column(
                     children: [
-                      const Icon(LucideIcons.alertTriangle, color: Colors.redAccent, size: 40),
+                      Icon(LucideIcons.alertTriangle, color: theme.colorScheme.error, size: 40),
                       const SizedBox(height: 12),
                       Text(
                         _error!,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.outfit(color: Colors.white70, fontSize: 14),
+                        style: GoogleFonts.outfit(color: theme.colorScheme.onBackground, fontSize: 14),
                       ),
                     ],
                   ),
@@ -134,11 +137,11 @@ class _QualitySelectorSheetState extends State<QualitySelectorSheet> {
                 child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: _options.length,
-                  separatorBuilder: (context, index) => Divider(color: Colors.white.withValues(alpha: 0.05)),
+                  separatorBuilder: (context, index) => Divider(color: theme.dividerColor.withOpacity(isDark ? 0.1 : 0.4)),
                   itemBuilder: (context, idx) {
                     final opt = _options[idx];
                     final isAudio = opt.type == 'audio';
-                    final color = isAudio ? Colors.purpleAccent : Colors.cyanAccent;
+                    final color = isAudio ? Colors.purple : theme.colorScheme.primary;
 
                     final cleanUrl = UrlSanitizerService.sanitizeSingleVideoUrl(widget.url);
                     final videoId = UrlSanitizerService.extractVideoId(cleanUrl);
@@ -150,7 +153,7 @@ class _QualitySelectorSheetState extends State<QualitySelectorSheet> {
                       leading: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.1),
+                          color: color.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(isAudio ? LucideIcons.music : LucideIcons.video, color: color, size: 20),
@@ -160,55 +163,55 @@ class _QualitySelectorSheetState extends State<QualitySelectorSheet> {
                           Expanded(
                             child: Text(
                               opt.label,
-                              style: GoogleFonts.shareTechMono(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                              style: GoogleFonts.outfit(color: theme.colorScheme.onBackground, fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ),
                           if (downloaded)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.greenAccent.withValues(alpha: 0.2),
+                                color: Colors.green.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
                                 'SAVED',
-                                style: GoogleFonts.shareTechMono(color: Colors.greenAccent, fontSize: 10),
+                                style: GoogleFonts.outfit(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold),
                               ),
                             )
                           else if (downloading)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.orangeAccent.withValues(alpha: 0.2),
+                                color: theme.colorScheme.secondary.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
                                 'ACTIVE',
-                                style: GoogleFonts.shareTechMono(color: Colors.orangeAccent, fontSize: 10),
+                                style: GoogleFonts.outfit(color: theme.colorScheme.secondary, fontSize: 10, fontWeight: FontWeight.bold),
                               ),
                             ),
                         ],
                       ),
                       subtitle: Text(
                         opt.description,
-                        style: GoogleFonts.outfit(color: Colors.white38, fontSize: 12),
+                        style: GoogleFonts.outfit(color: theme.colorScheme.onBackground.withOpacity(0.4), fontSize: 12),
                       ),
-                      trailing: const Icon(LucideIcons.chevronRight, color: Colors.white30),
+                      trailing: Icon(LucideIcons.chevronRight, color: theme.colorScheme.onBackground.withOpacity(0.3)),
                       onTap: () {
                         if (downloaded) {
                           final downloadedVideo = controller.getDownloadedVideo(videoId, opt.label);
                           showDialog(
                             context: context,
                             builder: (context) => AlertDialog(
-                              backgroundColor: const Color(0xFF0F172A),
+                              backgroundColor: theme.cardColor,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                               title: Text(
                                 'ALREADY DOWNLOADED',
-                                style: GoogleFonts.shareTechMono(color: Colors.cyanAccent, fontSize: 16, letterSpacing: 1),
+                                style: GoogleFonts.outfit(color: theme.colorScheme.primary, fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                               content: Text(
                                 'This resolution has already been saved to your local storage. Would you like to play it now or download again?',
-                                style: GoogleFonts.outfit(color: Colors.white70, fontSize: 14),
+                                style: GoogleFonts.outfit(color: theme.colorScheme.onSurface, fontSize: 14),
                               ),
                               actions: [
                                 TextButton(
@@ -227,7 +230,7 @@ class _QualitySelectorSheetState extends State<QualitySelectorSheet> {
                                       );
                                     }
                                   },
-                                  child: Text('PLAY IN APP', style: GoogleFonts.shareTechMono(color: Colors.cyanAccent)),
+                                  child: Text('PLAY IN APP', style: GoogleFonts.outfit(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
                                 ),
                                 TextButton(
                                   onPressed: () {
@@ -240,7 +243,7 @@ class _QualitySelectorSheetState extends State<QualitySelectorSheet> {
                                     );
                                     Navigator.pop(context); // Close sheet
                                   },
-                                  child: Text('DOWNLOAD AGAIN', style: GoogleFonts.shareTechMono(color: Colors.white54)),
+                                  child: Text('DOWNLOAD AGAIN', style: GoogleFonts.outfit(color: theme.colorScheme.onSurface.withOpacity(0.5))),
                                 ),
                               ],
                             ),
@@ -250,7 +253,7 @@ class _QualitySelectorSheetState extends State<QualitySelectorSheet> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('Download already in progress: ${((req?.progress ?? 0) * 100).toInt()}%'),
-                              backgroundColor: Colors.cyanAccent.withValues(alpha: 0.8),
+                              backgroundColor: theme.colorScheme.primary,
                             ),
                           );
                         } else {

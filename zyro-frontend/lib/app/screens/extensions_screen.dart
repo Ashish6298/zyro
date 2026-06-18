@@ -4,7 +4,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../core/extension_manager.dart';
 import '../../core/models/extension_model.dart';
-import '../widgets/glass_container.dart';
 
 class ExtensionsScreen extends StatefulWidget {
   const ExtensionsScreen({super.key});
@@ -18,23 +17,42 @@ class _ExtensionsScreenState extends State<ExtensionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(
-          'EXTENSIONS',
-          style: GoogleFonts.shareTechMono(
-            color: Colors.cyanAccent,
-            letterSpacing: 2,
-            fontWeight: FontWeight.bold,
-          ),
+        centerTitle: false,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'EXTENSIONS',
+              style: GoogleFonts.outfit(
+                color: theme.colorScheme.onSurface,
+                fontSize: 20,
+                letterSpacing: 2,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            Text(
+              'Manage browser plug-ins',
+              style: GoogleFonts.outfit(
+                color: theme.colorScheme.onSurface.withOpacity(0.4),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
+        iconTheme: IconThemeData(color: theme.colorScheme.onSurface),
       ),
       body: Column(
         children: [
-          _buildSearchBar(),
+          _buildSearchBar(theme, isDark),
           Expanded(
             child: Consumer<ExtensionManager>(
               builder: (context, manager, child) {
@@ -46,24 +64,63 @@ class _ExtensionsScreenState extends State<ExtensionsScreen> {
                     .toList();
 
                 return ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  physics: const BouncingScrollPhysics(),
                   children: [
                     if (installed.isNotEmpty) ...[
-                      _buildSectionHeader('INSTALLED'),
-                      ...installed.map((e) => _buildExtensionTile(e, manager, isInstalled: true)),
-                      const SizedBox(height: 24),
+                      _buildSectionHeader(theme, 'INSTALLED'),
+                      ...installed.map((e) => ExtensionCard(
+                            extension: e,
+                            manager: manager,
+                            isInstalled: true,
+                          )),
+                      const SizedBox(height: 16),
                     ],
                     if (available.isNotEmpty) ...[
-                      _buildSectionHeader('AVAILABLE'),
-                      ...available.map((e) => _buildExtensionTile(e, manager, isInstalled: false)),
+                      _buildSectionHeader(theme, 'AVAILABLE'),
+                      ...available.map((e) => ExtensionCard(
+                            extension: e,
+                            manager: manager,
+                            isInstalled: false,
+                          )),
                     ],
                     if (installed.isEmpty && available.isEmpty)
                       Center(
                         child: Padding(
                           padding: const EdgeInsets.only(top: 64),
-                          child: Text(
-                            'NO EXTENSIONS FOUND',
-                            style: GoogleFonts.shareTechMono(color: Colors.white24),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary.withOpacity(0.04),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  LucideIcons.puzzle,
+                                  size: 40,
+                                  color: theme.colorScheme.primary.withOpacity(0.4),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No extensions found',
+                                style: GoogleFonts.outfit(
+                                  color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Try refining your search keyword.',
+                                style: GoogleFonts.outfit(
+                                  color: theme.colorScheme.onSurface.withOpacity(0.3),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -77,67 +134,187 @@ class _ExtensionsScreenState extends State<ExtensionsScreen> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(ThemeData theme, bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: GlassContainer(
-        borderRadius: 12,
-        opacity: 0.05,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? theme.cardColor.withOpacity(0.4) : theme.cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? theme.dividerColor.withOpacity(0.06) : theme.dividerColor.withOpacity(0.4),
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isDark ? Colors.black.withOpacity(0.1) : Colors.black.withOpacity(0.01),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
         child: TextField(
           onChanged: (value) => setState(() => _searchQuery = value),
-          style: GoogleFonts.outfit(color: Colors.white, fontSize: 14),
+          style: GoogleFonts.outfit(color: theme.colorScheme.onSurface, fontSize: 14),
           decoration: InputDecoration(
-            hintText: 'SEARCH EXTENSIONS...',
-            hintStyle: GoogleFonts.shareTechMono(color: Colors.white24, fontSize: 12),
-            prefixIcon: const Icon(LucideIcons.search, color: Colors.cyanAccent, size: 18),
+            hintText: 'Search extensions...',
+            hintStyle: GoogleFonts.outfit(color: theme.colorScheme.onSurface.withOpacity(0.4), fontSize: 13),
+            prefixIcon: Icon(LucideIcons.search, color: theme.colorScheme.primary, size: 18),
             border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            fillColor: Colors.transparent,
+            contentPadding: const EdgeInsets.symmetric(vertical: 14),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(ThemeData theme, String title) {
     return Padding(
-      padding: const EdgeInsets.only(left: 8, bottom: 12),
+      padding: const EdgeInsets.only(left: 4, bottom: 12, top: 12),
       child: Text(
         title,
-        style: GoogleFonts.shareTechMono(
-          color: Colors.cyanAccent.withOpacity(0.5),
-          fontSize: 12,
-          letterSpacing: 4,
+        style: GoogleFonts.outfit(
+          color: theme.colorScheme.primary,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 2.5,
         ),
       ),
     );
   }
+}
 
-  Widget _buildExtensionTile(ExtensionModel extension, ExtensionManager manager, {required bool isInstalled}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: GlassContainer(
-        borderRadius: 16,
-        opacity: 0.05,
-        child: ListTile(
-          leading: Icon(extension.icon, color: Colors.cyanAccent, size: 24),
-          title: Text(
-            extension.name,
-            style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
+class ExtensionCard extends StatefulWidget {
+  final ExtensionModel extension;
+  final ExtensionManager manager;
+  final bool isInstalled;
+
+  const ExtensionCard({
+    super.key,
+    required this.extension,
+    required this.manager,
+    required this.isInstalled,
+  });
+
+  @override
+  State<ExtensionCard> createState() => _ExtensionCardState();
+}
+
+class _ExtensionCardState extends State<ExtensionCard> {
+  double _scale = 1.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final extension = widget.extension;
+
+    return GestureDetector(
+      onTapDown: widget.isInstalled ? null : (_) => setState(() => _scale = 0.98),
+      onTapUp: widget.isInstalled ? null : (_) {
+        setState(() => _scale = 1.0);
+        widget.manager.installExtension(extension);
+      },
+      onTapCancel: widget.isInstalled ? null : () => setState(() => _scale = 1.0),
+      child: AnimatedScale(
+        scale: _scale,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOutCubic,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: isDark ? theme.cardColor.withOpacity(0.4) : theme.cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark ? theme.dividerColor.withOpacity(0.06) : theme.dividerColor.withOpacity(0.4),
+              width: 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isDark ? Colors.black.withOpacity(0.15) : Colors.black.withOpacity(0.01),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-          subtitle: Text(
-            extension.description,
-            style: GoogleFonts.outfit(color: Colors.white60, fontSize: 12),
-          ),
-          trailing: isInstalled
-              ? Switch(
-                  value: extension.isEnabled,
-                  onChanged: (_) => manager.toggleExtension(extension.id),
-                  activeColor: Colors.cyanAccent,
-                )
-              : IconButton(
-                  icon: const Icon(LucideIcons.downloadCloud, color: Colors.cyanAccent),
-                  onPressed: () => manager.installExtension(extension),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Icon Badge
+              Container(
+                margin: const EdgeInsets.only(top: 2),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.06),
+                  shape: BoxShape.circle,
                 ),
+                child: Icon(
+                  extension.icon,
+                  color: theme.colorScheme.primary,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 16),
+              
+              // Details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      extension.name,
+                      style: GoogleFonts.outfit(
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      extension.description,
+                      style: GoogleFonts.outfit(
+                        color: theme.colorScheme.onSurface.withOpacity(0.5),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Action Switch or Download Icon
+              Align(
+                alignment: Alignment.centerRight,
+                child: widget.isInstalled
+                    ? Switch(
+                        value: extension.isEnabled,
+                        onChanged: (_) => widget.manager.toggleExtension(extension.id),
+                        activeColor: theme.colorScheme.primary,
+                        activeTrackColor: theme.colorScheme.primary.withOpacity(0.2),
+                        inactiveThumbColor: theme.colorScheme.onSurface.withOpacity(0.4),
+                        inactiveTrackColor: theme.colorScheme.onSurface.withOpacity(0.1),
+                      )
+                    : Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withOpacity(0.06),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          LucideIcons.downloadCloud,
+                          color: theme.colorScheme.primary,
+                          size: 18,
+                        ),
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );

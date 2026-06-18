@@ -44,17 +44,20 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
           'DOWNLOADS',
-          style: GoogleFonts.shareTechMono(color: Colors.cyanAccent, fontSize: 20, letterSpacing: 2),
+          style: GoogleFonts.outfit(color: theme.colorScheme.onBackground, fontWeight: FontWeight.bold),
         ),
         leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
+          icon: Icon(LucideIcons.arrowLeft, color: theme.colorScheme.onBackground),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -68,16 +71,16 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(LucideIcons.downloadCloud, color: Colors.white.withValues(alpha: 0.1), size: 80),
+                  Icon(LucideIcons.downloadCloud, color: theme.colorScheme.onBackground.withOpacity(0.1), size: 80),
                   const SizedBox(height: 16),
                   Text(
                     'NO DOWNLOADS',
-                    style: GoogleFonts.shareTechMono(color: Colors.white38, fontSize: 16, letterSpacing: 1),
+                    style: GoogleFonts.outfit(color: theme.colorScheme.onBackground.withOpacity(0.3), fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Your active and completed downloads will appear here.',
-                    style: GoogleFonts.outfit(color: Colors.white24, fontSize: 13),
+                    style: GoogleFonts.outfit(color: theme.colorScheme.onBackground.withOpacity(0.3), fontSize: 13),
                   ),
                 ],
               ),
@@ -86,8 +89,8 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
           return RefreshIndicator(
             onRefresh: controller.loadDownloadedVideos,
-            color: Colors.cyanAccent,
-            backgroundColor: const Color(0xFF1E293B),
+            color: theme.colorScheme.primary,
+            backgroundColor: theme.cardColor,
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               children: [
@@ -96,10 +99,10 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                     padding: const EdgeInsets.only(bottom: 12.0, top: 4.0),
                     child: Text(
                       'ACTIVE DOWNLOADS (${active.length})',
-                      style: GoogleFonts.shareTechMono(color: Colors.orangeAccent, fontSize: 12, letterSpacing: 1.5, fontWeight: FontWeight.bold),
+                      style: GoogleFonts.outfit(color: theme.colorScheme.secondary, fontSize: 12, letterSpacing: 1.5, fontWeight: FontWeight.bold),
                     ),
                   ),
-                  ...active.map((req) => _buildActiveDownloadCard(context, req, controller)),
+                  ...active.map((req) => _buildActiveDownloadCard(context, req, controller, theme, isDark)),
                   const SizedBox(height: 16),
                 ],
                 if (completed.isNotEmpty) ...[
@@ -107,7 +110,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                     padding: const EdgeInsets.only(bottom: 12.0),
                     child: Text(
                       'DOWNLOADED VIDEOS (${completed.length})',
-                      style: GoogleFonts.shareTechMono(color: Colors.cyanAccent, fontSize: 12, letterSpacing: 1.5, fontWeight: FontWeight.bold),
+                      style: GoogleFonts.outfit(color: theme.colorScheme.primary, fontSize: 12, letterSpacing: 1.5, fontWeight: FontWeight.bold),
                     ),
                   ),
                   ...completed.map((video) => DownloadedVideoCard(
@@ -127,33 +130,33 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                           showDialog(
                             context: context,
                             builder: (context) => AlertDialog(
-                              backgroundColor: const Color(0xFF0F172A),
+                              backgroundColor: theme.cardColor,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                               title: Text(
                                 'DELETE DOWNLOAD',
-                                style: GoogleFonts.shareTechMono(color: Colors.redAccent, fontSize: 16, letterSpacing: 1),
+                                style: GoogleFonts.outfit(color: theme.colorScheme.error, fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                               content: Text(
                                 'Are you sure you want to delete this file and remove it from your library? This action cannot be undone.',
-                                style: GoogleFonts.outfit(color: Colors.white70, fontSize: 14),
+                                style: GoogleFonts.outfit(color: theme.colorScheme.onSurface, fontSize: 14),
                               ),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(context),
-                                  child: Text('CANCEL', style: GoogleFonts.shareTechMono(color: Colors.white54)),
+                                  child: Text('CANCEL', style: GoogleFonts.outfit(color: theme.colorScheme.onSurface.withOpacity(0.5))),
                                 ),
                                 TextButton(
                                   onPressed: () {
                                     Navigator.pop(context);
                                     controller.deleteVideo(video.id);
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Video deleted successfully'),
-                                        backgroundColor: Colors.redAccent,
+                                      SnackBar(
+                                        content: const Text('Video deleted successfully'),
+                                        backgroundColor: theme.colorScheme.error,
                                       ),
                                     );
                                   },
-                                  child: Text('DELETE', style: GoogleFonts.shareTechMono(color: Colors.redAccent)),
+                                  child: Text('DELETE', style: GoogleFonts.outfit(color: theme.colorScheme.error, fontWeight: FontWeight.bold)),
                                 ),
                               ],
                             ),
@@ -169,7 +172,13 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     );
   }
 
-  Widget _buildActiveDownloadCard(BuildContext context, DownloadRequest req, DownloadController controller) {
+  Widget _buildActiveDownloadCard(
+    BuildContext context,
+    DownloadRequest req,
+    DownloadController controller,
+    ThemeData theme,
+    bool isDark,
+  ) {
     final isFailed = req.state == DownloadState.failed;
     final progress = req.progress;
 
@@ -177,10 +186,12 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isFailed ? Colors.redAccent.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.05),
+          color: isFailed 
+              ? theme.colorScheme.error.withOpacity(0.3) 
+              : theme.dividerColor.withOpacity(isDark ? 0.1 : 0.4),
         ),
       ),
       child: Column(
@@ -197,15 +208,15 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                       req.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                      style: GoogleFonts.outfit(color: theme.colorScheme.onBackground, fontSize: 14, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _formatState(req.state),
-                      style: GoogleFonts.shareTechMono(
-                        color: isFailed ? Colors.redAccent : Colors.orangeAccent,
+                      style: GoogleFonts.outfit(
+                        color: isFailed ? theme.colorScheme.error : theme.colorScheme.secondary,
                         fontSize: 11,
-                        letterSpacing: 1,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -214,16 +225,11 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
               IconButton(
                 icon: Icon(
                   isFailed ? LucideIcons.trash2 : LucideIcons.xCircle,
-                  color: isFailed ? Colors.redAccent : Colors.white38,
+                  color: isFailed ? theme.colorScheme.error : theme.colorScheme.onBackground.withOpacity(0.3),
                   size: 20,
                 ),
                 onPressed: () {
-                  if (isFailed) {
-                    controller.removeFailedRequest(req.id);
-                  } else {
-                    // Cancel / remove from list
-                    controller.removeFailedRequest(req.id);
-                  }
+                  controller.removeFailedRequest(req.id);
                 },
               ),
             ],
@@ -236,8 +242,8 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: isFailed ? 0 : (progress > 0 ? progress : null),
-                    color: Colors.orangeAccent,
-                    backgroundColor: Colors.white10,
+                    color: theme.colorScheme.secondary,
+                    backgroundColor: theme.dividerColor.withOpacity(0.15),
                     minHeight: 6,
                   ),
                 ),
@@ -245,7 +251,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
               const SizedBox(width: 12),
               Text(
                 isFailed ? 'FAILED' : '${(progress * 100).toInt()}%',
-                style: GoogleFonts.shareTechMono(color: Colors.white70, fontSize: 12),
+                style: GoogleFonts.outfit(color: theme.colorScheme.onBackground.withOpacity(0.7), fontSize: 12, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -255,7 +261,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
               req.error!,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.outfit(color: Colors.redAccent, fontSize: 11),
+              style: GoogleFonts.outfit(color: theme.colorScheme.error, fontSize: 11),
             ),
           ]
         ],

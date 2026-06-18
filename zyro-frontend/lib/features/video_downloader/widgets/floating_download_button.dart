@@ -9,6 +9,9 @@ class FloatingDownloadButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Consumer<DownloadController>(
       builder: (context, controller, child) {
         final video = controller.currentPlayingVideo;
@@ -52,23 +55,23 @@ class FloatingDownloadButton extends StatelessWidget {
                     child: CircularProgressIndicator(
                       value: progress > 0.0 ? progress : null,
                       strokeWidth: 4,
-                      color: Colors.cyanAccent,
-                      backgroundColor: Colors.white12,
+                      color: theme.colorScheme.primary,
+                      backgroundColor: theme.dividerColor.withOpacity(isDark ? 0.1 : 0.3),
                     ),
                   ),
                 Container(
                   width: 56,
                   height: 56,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF06B6D4), Color(0xFF3B82F6)],
+                    gradient: LinearGradient(
+                      colors: [theme.colorScheme.tertiary, theme.colorScheme.primary],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.cyanAccent.withValues(alpha: 0.3),
+                        color: theme.colorScheme.primary.withOpacity(0.3),
                         blurRadius: 15,
                         spreadRadius: 1,
                       ),

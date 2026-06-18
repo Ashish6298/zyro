@@ -64,19 +64,27 @@ class _GlassAppBarState extends State<GlassAppBar> {
   }
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: GlassContainer(
             borderRadius: 16,
-            opacity: 0.1,
+            opacity: isDark ? 0.08 : 0.05,
+            color: theme.colorScheme.onSurface,
+            border: Border.all(
+              color: theme.colorScheme.onSurface.withOpacity(isDark ? 0.1 : 0.15),
+              width: 1.0,
+            ),
             child: Container(
               height: 56,
               padding: const EdgeInsets.all(4),
               child: Row(
                 children: [
-                  _buildSecurityIndicator(),
+                  _buildSecurityIndicator(theme),
                   const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
@@ -96,7 +104,7 @@ class _GlassAppBarState extends State<GlassAppBar> {
                       },
                       style: GoogleFonts.outfit(
                         fontSize: 14, 
-                        color: Colors.white, 
+                        color: theme.colorScheme.onSurface, 
                         letterSpacing: 0.2
                       ),
                       decoration: InputDecoration(
@@ -104,13 +112,13 @@ class _GlassAppBarState extends State<GlassAppBar> {
                         isCollapsed: true,
                         contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                         hintText: 'Search or enter URL',
-                        hintStyle: TextStyle(color: Colors.white24, fontSize: 13),
-                        suffixIcon: _buildSuffixIcon(),
+                        hintStyle: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.4), fontSize: 13),
+                        suffixIcon: _buildSuffixIcon(theme),
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(LucideIcons.rotateCcw, size: 18, color: Colors.white38),
+                    icon: Icon(LucideIcons.rotateCcw, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.5)),
                     onPressed: () => widget.tab.controller?.reload(),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -121,20 +129,54 @@ class _GlassAppBarState extends State<GlassAppBar> {
             ),
           ),
         ),
-        _buildProgressBar(),
+        _buildProgressBar(theme),
       ],
     );
   }
 
-  Widget _buildSecurityIndicator() {
+  Widget _buildSecurityIndicator(ThemeData theme) {
+    if (widget.tab.isIncognito) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade900.withOpacity(0.85),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: Colors.grey.shade700,
+            width: 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              LucideIcons.eyeOff,
+              size: 13,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              "PRIVATE",
+              style: GoogleFonts.outfit(
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final isSecure = widget.tab.url.startsWith('https');
+    final color = isSecure ? theme.colorScheme.secondary : theme.colorScheme.error;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isSecure ? Colors.cyanAccent.withOpacity(0.1) : Colors.redAccent.withOpacity(0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: isSecure ? Colors.cyanAccent.withOpacity(0.2) : Colors.redAccent.withOpacity(0.2),
+          color: color.withOpacity(0.2),
         ),
       ),
       child: Row(
@@ -143,7 +185,7 @@ class _GlassAppBarState extends State<GlassAppBar> {
           Icon(
             isSecure ? LucideIcons.shieldCheck : LucideIcons.shieldAlert,
             size: 14,
-            color: isSecure ? Colors.cyanAccent : Colors.redAccent,
+            color: color,
           ),
           if (isSecure) ...[
             const SizedBox(width: 4),
@@ -153,16 +195,16 @@ class _GlassAppBarState extends State<GlassAppBar> {
     );
   }
 
-  Widget? _buildSuffixIcon() {
+  Widget? _buildSuffixIcon(ThemeData theme) {
     if (_controller.text.isEmpty) return null;
     return IconButton(
       icon: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: Colors.cyanAccent.withAlpha(50),
+          color: theme.colorScheme.primary.withOpacity(0.15),
           shape: BoxShape.circle,
         ),
-        child: const Icon(LucideIcons.arrowRight, size: 16, color: Colors.cyanAccent),
+        child: Icon(LucideIcons.arrowRight, size: 16, color: theme.colorScheme.primary),
       ),
       onPressed: () {
         _onSubmitted(_controller.text);
@@ -174,7 +216,7 @@ class _GlassAppBarState extends State<GlassAppBar> {
     );
   }
 
-  Widget _buildProgressBar() {
+  Widget _buildProgressBar(ThemeData theme) {
     if (!widget.tab.isLoading) return const SizedBox(height: 4);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
@@ -183,7 +225,7 @@ class _GlassAppBarState extends State<GlassAppBar> {
         child: LinearProgressIndicator(
           value: widget.tab.progress,
           backgroundColor: Colors.transparent,
-          valueColor: const AlwaysStoppedAnimation<Color>(Colors.cyanAccent),
+          valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
           minHeight: 2,
         ),
       ),

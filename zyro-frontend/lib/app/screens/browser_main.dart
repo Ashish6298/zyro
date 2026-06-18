@@ -31,6 +31,9 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Consumer2<TabManager, BrowserDataManager>(
       builder: (context, tabManager, dataManager, child) {
         // Listen for finished downloads
@@ -43,7 +46,7 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
               SnackBar(
                 content: Row(
                   children: [
-                    const Icon(LucideIcons.checkCircle, color: Colors.greenAccent, size: 20),
+                    const Icon(LucideIcons.checkCircle, color: Colors.green, size: 20),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -52,18 +55,18 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
                         children: [
                           Text(
                             'DOWNLOAD COMPLETE',
-                            style: GoogleFonts.shareTechMono(color: Colors.greenAccent, fontSize: 10, letterSpacing: 2),
+                            style: GoogleFonts.outfit(color: theme.colorScheme.primary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2),
                           ),
                           Text(
                             '${item.title} saved to device.',
-                            style: GoogleFonts.outfit(color: Colors.white, fontSize: 12),
+                            style: GoogleFonts.outfit(color: theme.colorScheme.onSurface, fontSize: 12),
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
-                backgroundColor: const Color(0xFF0F172A),
+                backgroundColor: theme.cardColor,
                 behavior: SnackBarBehavior.floating,
                 duration: const Duration(seconds: 4),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -81,6 +84,7 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
         return Scaffold(
           key: _scaffoldKey,
           endDrawer: const CyberMenu(),
+          backgroundColor: theme.scaffoldBackgroundColor,
           body: SafeArea(
             bottom: false,
             child: Stack(
@@ -88,7 +92,7 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
                 Column(
                   children: [
                     GlassAppBar(tab: currentTab),
-                    if (tabManager.isFindingInPage) _buildFindBar(tabManager),
+                    if (tabManager.isFindingInPage) _buildFindBar(tabManager, theme),
                     Expanded(
                       child: IndexedStack(
                         index: tabManager.currentIndex,
@@ -101,7 +105,7 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
                         }).toList(),
                       ),
                     ),
-                    _buildBottomNav(tabManager),
+                    _buildBottomNav(tabManager, theme, isDark),
                   ],
                 ),
                 const FloatingDownloadButton(),
@@ -113,38 +117,41 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
     );
   }
 
-  Widget _buildBottomNav(TabManager tabManager) {
+  Widget _buildBottomNav(TabManager tabManager, ThemeData theme, bool isDark) {
     final currentTab = tabManager.currentTab!;
     
     return Container(
       padding: const EdgeInsets.only(bottom: 32, left: 24, right: 24, top: 4),
       child: GlassContainer(
         borderRadius: 24,
-        opacity: 0.1,
+        opacity: isDark ? 0.1 : 0.03,
         child: Container(
           height: 72,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.05)),
+            border: Border.all(color: theme.dividerColor.withOpacity(isDark ? 0.05 : 0.3)),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildNavButton(
+                theme,
                 icon: LucideIcons.chevronLeft,
                 onPressed: () {
                   currentTab.controller?.goBack();
                 },
               ),
               _buildNavButton(
+                theme,
                 icon: LucideIcons.chevronRight,
                 onPressed: () {
                   currentTab.controller?.goForward();
                 },
               ),
-              _buildCenterButton(tabManager),
+              _buildCenterButton(tabManager, theme),
               _buildNavButton(
+                theme,
                 icon: LucideIcons.layers,
                 badge: '${tabManager.tabs.length}',
                 onPressed: () {
@@ -155,6 +162,7 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
                 },
               ),
               _buildNavButton(
+                theme,
                 icon: LucideIcons.moreHorizontal,
                 onPressed: () => _showCyberMenu(context),
               ),
@@ -165,15 +173,15 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
     );
   }
 
-  Widget _buildNavButton({required IconData icon, required VoidCallback onPressed, String? badge}) {
+  Widget _buildNavButton(ThemeData theme, {required IconData icon, required VoidCallback onPressed, String? badge}) {
     return IconButton(
       icon: badge != null 
           ? Badge(
-              label: Text(badge, style: GoogleFonts.outfit(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black)),
-              backgroundColor: Colors.cyanAccent,
-              child: Icon(icon, color: Colors.white60, size: 20),
+              label: Text(badge, style: GoogleFonts.outfit(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white)),
+              backgroundColor: theme.colorScheme.primary,
+              child: Icon(icon, color: theme.colorScheme.onBackground.withOpacity(0.6), size: 20),
             )
-          : Icon(icon, color: Colors.white60, size: 20),
+          : Icon(icon, color: theme.colorScheme.onBackground.withOpacity(0.6), size: 20),
       onPressed: () {
         HapticFeedback.lightImpact();
         onPressed();
@@ -183,7 +191,7 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
     );
   }
 
-  Widget _buildCenterButton(TabManager tabManager) {
+  Widget _buildCenterButton(TabManager tabManager, ThemeData theme) {
     return GestureDetector(
       onTap: () {
         HapticFeedback.mediumImpact();
@@ -193,46 +201,49 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
         width: 52,
         height: 52,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Colors.cyanAccent, Color(0xFF4F46E5)],
+          gradient: LinearGradient(
+            colors: [theme.colorScheme.tertiary, theme.colorScheme.primary],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.cyanAccent.withOpacity(0.3),
+              color: theme.colorScheme.primary.withOpacity(0.3),
               blurRadius: 12,
               spreadRadius: -2,
             ),
           ],
         ),
-        child: const Icon(LucideIcons.plus, color: Colors.black, size: 24),
+        child: const Icon(LucideIcons.plus, color: Colors.white, size: 24),
       ),
     );
   }
 
-  Widget _buildFindBar(TabManager tabManager) {
+  Widget _buildFindBar(TabManager tabManager, ThemeData theme) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.black26,
+      color: theme.brightness == Brightness.dark ? Colors.black26 : Colors.black12,
       child: GlassContainer(
         borderRadius: 12,
         opacity: 0.1,
         child: Row(
           children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12),
-              child: Icon(LucideIcons.search, color: Colors.cyanAccent, size: 18),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Icon(LucideIcons.search, color: theme.colorScheme.primary, size: 18),
             ),
             Expanded(
               child: TextField(
                 autofocus: true,
-                style: GoogleFonts.outfit(color: Colors.white, fontSize: 14),
+                style: GoogleFonts.outfit(color: theme.colorScheme.onBackground, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: 'FIND IN PAGE...',
-                  hintStyle: GoogleFonts.shareTechMono(color: Colors.white24, fontSize: 12),
+                  hintStyle: GoogleFonts.outfit(color: theme.colorScheme.onBackground.withOpacity(0.3), fontSize: 12),
                   border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  fillColor: Colors.transparent,
                 ),
                 onChanged: (value) {
                   tabManager.currentTab?.controller?.findAllAsync(find: value);
@@ -240,7 +251,7 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
               ),
             ),
             IconButton(
-              icon: const Icon(LucideIcons.x, color: Colors.white38, size: 18),
+              icon: Icon(LucideIcons.x, color: theme.colorScheme.onBackground.withOpacity(0.4), size: 18),
               onPressed: () {
                 tabManager.currentTab?.controller?.clearMatches();
                 tabManager.toggleFindInPage();

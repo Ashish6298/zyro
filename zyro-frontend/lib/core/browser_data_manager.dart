@@ -19,6 +19,9 @@ class BrowserDataManager extends ChangeNotifier {
   final List<HistoryItem> _history = [];
   final List<BookmarkItem> _bookmarks = [];
   final List<DownloadItem> _downloads = [];
+  final List<Map<String, String>> _readingList = [];
+  final List<Map<String, String>> _favorites = [];
+  final List<Map<String, String>> _offlinePages = [];
   final Map<String, Timer> _downloadPollers = {};
   final _uuid = const Uuid();
 
@@ -27,6 +30,27 @@ class BrowserDataManager extends ChangeNotifier {
   List<HistoryItem> get history => List.unmodifiable(_history);
   List<BookmarkItem> get bookmarks => List.unmodifiable(_bookmarks);
   List<DownloadItem> get downloads => List.unmodifiable(_downloads);
+  List<Map<String, String>> get readingList => List.unmodifiable(_readingList);
+  List<Map<String, String>> get favorites => List.unmodifiable(_favorites);
+  List<Map<String, String>> get offlinePages => List.unmodifiable(_offlinePages);
+
+  void addToReadingList(String url, String title) {
+    if (_readingList.any((e) => e['url'] == url)) return;
+    _readingList.add({'url': url, 'title': title});
+    notifyListeners();
+  }
+
+  void addToFavorites(String url, String title) {
+    if (_favorites.any((e) => e['url'] == url)) return;
+    _favorites.add({'url': url, 'title': title});
+    notifyListeners();
+  }
+
+  void saveForOffline(String url, String title) {
+    if (_offlinePages.any((e) => e['url'] == url)) return;
+    _offlinePages.add({'url': url, 'title': title});
+    notifyListeners();
+  }
 
   void addHistory(String url, String title) {
     if (_history.isNotEmpty && _history.last.url == url) return;

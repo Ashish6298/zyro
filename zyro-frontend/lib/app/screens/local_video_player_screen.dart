@@ -42,6 +42,8 @@ class _LocalVideoPlayerScreenState extends State<LocalVideoPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -52,6 +54,7 @@ class _LocalVideoPlayerScreenState extends State<LocalVideoPlayerScreen> {
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.outfit(color: Colors.white),
         ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: FutureBuilder<void>(
         future: _initializeFuture,
@@ -79,8 +82,8 @@ class _LocalVideoPlayerScreenState extends State<LocalVideoPlayerScreen> {
                   VideoProgressIndicator(
                     _controller,
                     allowScrubbing: true,
-                    colors: const VideoProgressColors(
-                      playedColor: Colors.cyanAccent,
+                    colors: VideoProgressColors(
+                      playedColor: theme.colorScheme.primary,
                       bufferedColor: Colors.white38,
                       backgroundColor: Colors.white12,
                     ),

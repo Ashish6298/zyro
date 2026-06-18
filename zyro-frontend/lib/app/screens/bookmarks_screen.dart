@@ -10,19 +10,23 @@ class BookmarksScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
           'BOOKMARKS',
-          style: GoogleFonts.shareTechMono(
-            color: Colors.cyanAccent,
+          style: GoogleFonts.outfit(
+            color: theme.colorScheme.onBackground,
             letterSpacing: 2,
             fontWeight: FontWeight.bold,
           ),
         ),
+        iconTheme: IconThemeData(color: theme.colorScheme.onBackground),
       ),
       body: Consumer<BrowserDataManager>(
         builder: (context, dataManager, child) {
@@ -32,7 +36,7 @@ class BookmarksScreen extends StatelessWidget {
             return Center(
               child: Text(
                 'NO BOOKMARKS SAVED',
-                style: GoogleFonts.shareTechMono(color: Colors.white24),
+                style: GoogleFonts.outfit(color: theme.colorScheme.onBackground.withOpacity(0.3)),
               ),
             );
           }
@@ -46,23 +50,23 @@ class BookmarksScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: GlassContainer(
                   borderRadius: 16,
-                  opacity: 0.05,
+                  opacity: isDark ? 0.05 : 0.02,
                   child: ListTile(
-                    leading: const Icon(LucideIcons.bookmark, color: Colors.cyanAccent, size: 20),
+                    leading: Icon(LucideIcons.bookmark, color: theme.colorScheme.primary, size: 20),
                     title: Text(
                       item.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.w500),
+                      style: GoogleFonts.outfit(color: theme.colorScheme.onBackground, fontWeight: FontWeight.w500),
                     ),
                     subtitle: Text(
                       item.url,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.shareTechMono(color: Colors.white38, fontSize: 11),
+                      style: GoogleFonts.outfit(color: theme.colorScheme.onBackground.withOpacity(0.4), fontSize: 11),
                     ),
                     trailing: IconButton(
-                      icon: const Icon(LucideIcons.trash, color: Colors.white24, size: 18),
+                      icon: Icon(LucideIcons.trash, color: theme.colorScheme.onBackground.withOpacity(0.3), size: 18),
                       onPressed: () => dataManager.toggleBookmark(item.url, item.title),
                     ),
                     onTap: () {

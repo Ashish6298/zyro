@@ -4,166 +4,399 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../core/tab_manager.dart';
-import '../widgets/glass_container.dart';
+import '../../core/models/tab_model.dart';
 
 class TabSwitcherScreen extends StatelessWidget {
   const TabSwitcherScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('ACTIVE_SESSIONS_', style: GoogleFonts.shareTechMono(color: Colors.cyanAccent)),
-        centerTitle: true,
         backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: false,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'ACTIVE SESSIONS',
+              style: GoogleFonts.outfit(
+                color: theme.colorScheme.onSurface,
+                fontSize: 20,
+                letterSpacing: 2,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            Text(
+              'Manage your active workspaces',
+              style: GoogleFonts.outfit(
+                color: theme.colorScheme.onSurface.withOpacity(0.4),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        iconTheme: IconThemeData(color: theme.colorScheme.onSurface),
         actions: [
           IconButton(
-            icon: const Icon(LucideIcons.plus, color: Colors.cyanAccent),
+            icon: Icon(LucideIcons.plus, color: theme.colorScheme.primary, size: 20),
+            style: IconButton.styleFrom(
+              backgroundColor: theme.colorScheme.primary.withOpacity(0.06),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.all(8),
+            ),
             onPressed: () {
               HapticFeedback.mediumImpact();
               context.read<TabManager>().addNewTab();
-              Navigator.pop(context);
             },
           ),
+          const SizedBox(width: 16),
         ],
       ),
       body: Consumer<TabManager>(
         builder: (context, tabManager, child) {
-          return Stack(
-            children: [
-              ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 64),
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                itemCount: tabManager.tabs.length,
-                itemBuilder: (context, index) {
-                  final tab = tabManager.tabs[index];
-                  final isCurrent = index == tabManager.currentIndex;
+          return GridView.builder(
+            padding: const EdgeInsets.all(16),
+            physics: const BouncingScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 14,
+              crossAxisSpacing: 14,
+              childAspectRatio: 0.85,
+            ),
+            itemCount: tabManager.tabs.length,
+            itemBuilder: (context, index) {
+              final tab = tabManager.tabs[index];
+              final isCurrent = index == tabManager.currentIndex;
 
-                  return Container(
-                    width: MediaQuery.of(context).size.width * 0.75,
-                    margin: const EdgeInsets.only(right: 32),
-                    child: GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        tabManager.switchTab(index);
-                        Navigator.pop(context);
-                      },
-                      child: Column(
+              return SessionCard(
+                tab: tab,
+                index: index,
+                isCurrent: isCurrent,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  tabManager.switchTab(index);
+                  Navigator.pop(context);
+                },
+                onClose: () => tabManager.closeTab(index),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class SessionCard extends StatefulWidget {
+  final TabModel tab;
+  final int index;
+  final bool isCurrent;
+  final VoidCallback onTap;
+  final VoidCallback onClose;
+
+  const SessionCard({
+    super.key,
+    required this.tab,
+    required this.index,
+    required this.isCurrent,
+    required this.onTap,
+    required this.onClose,
+  });
+
+  @override
+  State<SessionCard> createState() => _SessionCardState();
+}
+
+class _SessionCardState extends State<SessionCard> {
+  double _scale = 1.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final activeColor = theme.colorScheme.primary;
+    final tab = widget.tab;
+
+    String domainLetter = '';
+    String domainName = 'New Tab';
+    try {
+      if (tab.url.isNotEmpty && tab.url.startsWith('http')) {
+        final uri = Uri.parse(tab.url);
+        final host = uri.host.replaceAll('www.', '');
+        if (host.isNotEmpty) {
+          domainLetter = host[0].toUpperCase();
+          domainName = host;
+        }
+      }
+    } catch (_) {}
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _scale = 0.96),
+      onTapUp: (_) {
+        setState(() => _scale = 1.0);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _scale = 1.0),
+      child: AnimatedScale(
+        scale: _scale,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOutCubic,
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? theme.cardColor.withOpacity(0.4) : theme.cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: widget.isCurrent 
+                  ? activeColor 
+                  : (isDark ? theme.dividerColor.withOpacity(0.06) : theme.dividerColor.withOpacity(0.4)),
+              width: widget.isCurrent ? 2.0 : 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: widget.isCurrent
+                    ? activeColor.withOpacity(isDark ? 0.15 : 0.05)
+                    : (isDark ? Colors.black.withOpacity(0.2) : Colors.black.withOpacity(0.02)),
+                blurRadius: widget.isCurrent ? 16 : 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Card Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isCurrent ? Colors.cyanAccent.withOpacity(0.1) : Colors.white.withOpacity(0.02),
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                              border: Border.all(color: isCurrent ? Colors.cyanAccent.withOpacity(0.3) : Colors.white10),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'SESSION_0${index + 1}',
-                                  style: GoogleFonts.shareTechMono(
-                                    color: isCurrent ? Colors.cyanAccent : Colors.white38,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                if (!isCurrent || tabManager.tabs.length > 1)
-                                  GestureDetector(
-                                    onTap: () => tabManager.closeTab(index),
-                                    child: Icon(LucideIcons.x, size: 16, color: isCurrent ? Colors.cyanAccent : Colors.white24),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            child: Container(
+                          if (tab.groupName != null) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF1E293B), // Solid background to prevent floating look
-                                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-                                border: Border.all(color: isCurrent ? Colors.cyanAccent.withOpacity(0.5) : Colors.white10),
-                                boxShadow: isCurrent ? [
-                                  BoxShadow(
-                                    color: Colors.cyanAccent.withOpacity(0.15),
-                                    blurRadius: 30,
-                                    spreadRadius: -5,
-                                  )
-                                ] : [],
+                                color: theme.colorScheme.secondary.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(4),
                               ),
-                              child: Column(
-                                children: [
-                                  Expanded(
-                                    child: Container(
-                                      margin: const EdgeInsets.all(20),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black45,
-                                        borderRadius: BorderRadius.circular(12),
-                                        image: const DecorationImage(
-                                          image: NetworkImage('https://images.unsplash.com/photo-1614850523296-d8c1af93d400?q=80&w=2070&auto=format&fit=crop'),
-                                          opacity: 0.1,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                      child: Center(
-                                        child: Icon(
-                                          LucideIcons.globe, 
-                                          size: 56, 
-                                          color: isCurrent ? Colors.cyanAccent.withOpacity(0.4) : Colors.white10
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.all(20),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.3),
-                                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
-                                    ),
-                                    child: Text(
-                                      tab.title ?? tab.url,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 14, 
-                                        fontWeight: FontWeight.w600,
-                                        color: isCurrent ? Colors.white : Colors.white60,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ],
+                              child: Icon(LucideIcons.folder, size: 10, color: theme.colorScheme.secondary),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Flexible(
+                            child: Text(
+                              'SESSION 0${widget.index + 1}',
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.outfit(
+                                color: widget.isCurrent ? activeColor : theme.colorScheme.onSurface.withOpacity(0.6),
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
                               ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  );
-                },
-              ),
-              // Manual navigation handles (floating but with background)
-              Positioned(
-                left: 12,
-                top: 0,
-                bottom: 0,
-                child: Center(
-                  child: Icon(LucideIcons.chevronLeft, color: Colors.white.withOpacity(0.1), size: 32),
+                    Row(
+                      children: [
+                        PopupMenuButton<String>(
+                          icon: Icon(
+                            LucideIcons.moreVertical,
+                            size: 14,
+                            color: theme.colorScheme.onSurface.withOpacity(0.5),
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onSelected: (value) {
+                            if (value == 'new_tab') {
+                              context.read<TabManager>().addNewTab(url: tab.url);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Opened in a new tab', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+                                  backgroundColor: theme.colorScheme.primary,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              );
+                            } else if (value == 'new_group') {
+                              final newTab = context.read<TabManager>().openInTabGroup(url: tab.url);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Opened in new tab group: ${newTab.groupName}', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+                                  backgroundColor: theme.colorScheme.secondary,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              );
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'new_tab',
+                              child: Row(
+                                children: [
+                                  Icon(LucideIcons.plus, size: 14, color: theme.colorScheme.onSurface),
+                                  const SizedBox(width: 8),
+                                  Text('Open in New Tab', style: GoogleFonts.outfit(fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'new_group',
+                              child: Row(
+                                children: [
+                                  Icon(LucideIcons.folderPlus, size: 14, color: theme.colorScheme.onSurface),
+                                  const SizedBox(width: 8),
+                                  Text('Open in New Tab Group', style: GoogleFonts.outfit(fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 2),
+                        GestureDetector(
+                          onTap: widget.onClose,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.onSurface.withOpacity(0.04),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              LucideIcons.x,
+                              size: 12,
+                              color: theme.colorScheme.onSurface.withOpacity(0.4),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              Positioned(
-                right: 12,
-                top: 0,
-                bottom: 0,
-                child: Center(
-                  child: Icon(LucideIcons.chevronRight, color: Colors.white.withOpacity(0.1), size: 32),
+              // Preview Area
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.black26 : theme.scaffoldBackgroundColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? theme.dividerColor.withOpacity(0.04) : theme.dividerColor.withOpacity(0.2),
+                      width: 1.0,
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  theme.colorScheme.primary.withOpacity(widget.isCurrent ? 0.05 : 0.01),
+                                  theme.colorScheme.tertiary.withOpacity(widget.isCurrent ? 0.05 : 0.01),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Center(
+                          child: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: widget.isCurrent 
+                                  ? activeColor.withOpacity(0.06) 
+                                  : theme.colorScheme.onSurface.withOpacity(0.02),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Icon(
+                                LucideIcons.globe, 
+                                size: 24, 
+                                color: widget.isCurrent ? activeColor : theme.colorScheme.onSurface.withOpacity(0.15),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Card Footer (Session Info)
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        if (domainLetter.isNotEmpty) ...[
+                          Container(
+                            width: 16,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Center(
+                              child: Text(
+                                domainLetter,
+                                style: GoogleFonts.outfit(
+                                  color: theme.colorScheme.primary,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        Expanded(
+                          child: Text(
+                            domainName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.outfit(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: theme.colorScheme.onSurface.withOpacity(0.4),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      tab.title ?? 'New Tab',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        fontSize: 12, 
+                        fontWeight: FontWeight.bold,
+                        color: widget.isCurrent ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.8),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
-          );
-        },
+          ),
+        ),
       ),
     );
   }

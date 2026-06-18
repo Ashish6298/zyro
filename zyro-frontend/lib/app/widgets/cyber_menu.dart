@@ -9,9 +9,9 @@ import '../../core/browser_data_manager.dart';
 import '../screens/history_screen.dart';
 import '../screens/bookmarks_screen.dart';
 import '../../features/download_library/screens/downloads_screen.dart';
-import '../screens/settings_screen.dart';
+import '../../features/settings/screens/settings_screen.dart';
 import '../screens/extensions_screen.dart';
-import 'glass_container.dart';
+import '../../core/theme/app_colors.dart';
 
 class CyberMenu extends StatelessWidget {
   const CyberMenu({super.key});
@@ -20,90 +20,96 @@ class CyberMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final tabManager = Provider.of<TabManager>(context);
     final currentTab = tabManager.currentTab;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Drawer(
       backgroundColor: Colors.transparent,
-      width: MediaQuery.of(context).size.width * 0.75,
+      width: MediaQuery.of(context).size.width * 0.82,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 64),
-        decoration: const BoxDecoration(
-          color: Color(0xFF1E293B), // Slightly lighter for the drawer depth
-          borderRadius: BorderRadius.horizontal(left: Radius.circular(32)),
+        padding: const EdgeInsets.only(left: 20, right: 20, top: 48, bottom: 24),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: const BorderRadius.horizontal(left: Radius.circular(32)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black54,
-              blurRadius: 20,
-              offset: Offset(-5, 0),
+              color: Colors.black.withOpacity(isDark ? 0.54 : 0.08),
+              blurRadius: 24,
+              offset: const Offset(-6, 0),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Prominent visual header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'MENU',
-                      style: GoogleFonts.shareTechMono(
-                        color: Colors.cyanAccent,
-                        fontSize: 24,
-                        letterSpacing: 4,
-                        fontWeight: FontWeight.bold,
-                        shadows: [
-                          Shadow(
-                            color: Colors.cyanAccent.withOpacity(0.5),
-                            blurRadius: 12,
+                    Row(
+                      children: [
+                        Icon(
+                          LucideIcons.compass,
+                          color: theme.colorScheme.primary,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'ZYRO BROWSER',
+                          style: GoogleFonts.outfit(
+                            color: theme.colorScheme.primary,
+                            fontSize: 11,
+                            letterSpacing: 2.5,
+                            fontWeight: FontWeight.w800,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Container(
-                      width: 40,
-                      height: 2,
-                      decoration: BoxDecoration(
-                        color: Colors.cyanAccent,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.cyanAccent.withOpacity(0.5),
-                            blurRadius: 4,
-                          ),
-                        ],
+                    const SizedBox(height: 6),
+                    Text(
+                      'Quick Actions',
+                      style: GoogleFonts.outfit(
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ],
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(LucideIcons.chevronRight, color: Colors.cyanAccent, size: 28),
+                  icon: Icon(LucideIcons.chevronRight, color: theme.colorScheme.onSurface.withOpacity(0.6), size: 20),
                   style: IconButton.styleFrom(
-                    backgroundColor: Colors.cyanAccent.withOpacity(0.1),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    backgroundColor: theme.colorScheme.onSurface.withOpacity(0.04),
+                    shape: const CircleBorder(),
+                    padding: const EdgeInsets.all(10),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 48),
+            const SizedBox(height: 32),
+            
+            // Grid section
             Expanded(
               child: GridView.count(
                 padding: EdgeInsets.zero,
                 crossAxisCount: 2,
-                mainAxisSpacing: 20,
-                crossAxisSpacing: 20,
+                mainAxisSpacing: 14,
+                crossAxisSpacing: 14,
                 childAspectRatio: 1.0,
+                physics: const BouncingScrollPhysics(),
                 children: [
-                   _buildMenuCard(
-                    context,
+                  MenuCard(
                     icon: context.watch<BrowserDataManager>().isBookmarked(currentTab?.url ?? '') 
                         ? LucideIcons.star 
                         : LucideIcons.bookmark,
                     label: context.watch<BrowserDataManager>().isBookmarked(currentTab?.url ?? '')
                         ? 'SAVED'
                         : 'BOOKMARK',
+                    description: 'Save page to library',
                     isActive: context.watch<BrowserDataManager>().isBookmarked(currentTab?.url ?? ''),
                     onPressed: () {
                       if (currentTab != null) {
@@ -111,28 +117,44 @@ class CyberMenu extends StatelessWidget {
                       }
                     },
                   ),
-                  _buildMenuCard(
-                    context,
+                  MenuCard(
                     icon: LucideIcons.plus,
-                    label: 'NEW_TAB',
+                    label: 'NEW TAB',
+                    description: 'Open clean slate',
+                    isImportant: true,
                     onPressed: () {
                       tabManager.addNewTab();
                       Navigator.pop(context);
                     },
                   ),
-                  _buildMenuCard(
-                    context,
+                  MenuCard(
+                    icon: LucideIcons.eyeOff,
+                    label: 'INCOGNITO MODE',
+                    description: tabManager.isGlobalIncognito ? 'Private browsing active' : 'Private browsing off',
+                    isActive: tabManager.isGlobalIncognito,
+                    onPressed: () {
+                      final isEnabling = !tabManager.isGlobalIncognito;
+                      tabManager.setGlobalIncognito(isEnabling);
+                      Navigator.pop(context);
+                      
+                      if (isEnabling) {
+                        _showIncognitoExplanationDialog(context);
+                      }
+                    },
+                  ),
+                  MenuCard(
                     icon: LucideIcons.refreshCw,
                     label: 'REFRESH',
+                    description: 'Reload current page',
                     onPressed: () {
                       currentTab?.controller?.reload();
                       Navigator.pop(context);
                     },
                   ),
-                  _buildMenuCard(
-                    context,
+                  MenuCard(
                     icon: LucideIcons.share2,
                     label: 'SHARE',
+                    description: 'Send page link',
                     onPressed: () {
                       if (currentTab != null) {
                         Share.share(currentTab.url);
@@ -140,10 +162,10 @@ class CyberMenu extends StatelessWidget {
                       Navigator.pop(context);
                     },
                   ),
-                  _buildMenuCard(
-                    context,
+                  MenuCard(
                     icon: LucideIcons.history,
                     label: 'HISTORY',
+                    description: 'Recently visited',
                     onPressed: () async {
                       final url = await Navigator.push(
                         context,
@@ -155,10 +177,10 @@ class CyberMenu extends StatelessWidget {
                       if (context.mounted) Navigator.pop(context);
                     },
                   ),
-                  _buildMenuCard(
-                    context,
+                  MenuCard(
                     icon: LucideIcons.bookmark,
                     label: 'BOOKMARKS',
+                    description: 'View saved sites',
                     onPressed: () async {
                        final url = await Navigator.push(
                         context,
@@ -170,31 +192,30 @@ class CyberMenu extends StatelessWidget {
                       if (context.mounted) Navigator.pop(context);
                     },
                   ),
-                  _buildMenuCard(
-                    context,
+                  MenuCard(
                     icon: LucideIcons.monitor,
                     label: 'DESKTOP',
+                    description: 'Request PC site',
                     isActive: currentTab?.isDesktopMode ?? false,
                     onPressed: () {
                       tabManager.toggleDesktopMode(tabManager.currentIndex);
                       Navigator.pop(context);
                     },
                   ),
-                  _buildMenuCard(
-                    context,
+                  MenuCard(
                     icon: LucideIcons.search,
-                    label: 'FIND_IN',
+                    label: 'FIND IN PAGE',
+                    description: 'Locate site terms',
                     onPressed: () {
                       Navigator.pop(context);
-                      // Trigger Find in Page UI in BrowserMainScreen via a callback or state
-                      // We'll handle this in BrowserMainScreen by adding a 'isFinding' state
                       Provider.of<TabManager>(context, listen: false).toggleFindInPage();
                     },
                   ),
-                  _buildMenuCard(
-                    context,
+                  MenuCard(
                     icon: LucideIcons.download,
                     label: 'DOWNLOADS',
+                    description: 'Manage files',
+                    isImportant: true,
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -202,10 +223,10 @@ class CyberMenu extends StatelessWidget {
                       );
                     },
                   ),
-                  _buildMenuCard(
-                    context,
+                  MenuCard(
                     icon: LucideIcons.settings,
                     label: 'SETTINGS',
+                    description: 'App preferences',
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -213,10 +234,10 @@ class CyberMenu extends StatelessWidget {
                       );
                     },
                   ),
-                  _buildMenuCard(
-                    context,
+                  MenuCard(
                     icon: LucideIcons.puzzle,
                     label: 'EXTENSIONS',
+                    description: 'Manage add-ons',
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -232,48 +253,227 @@ class CyberMenu extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildMenuCard(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-    bool isActive = false,
-  }) {
+class MenuCard extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final String description;
+  final VoidCallback onPressed;
+  final bool isActive;
+  final bool isImportant;
+
+  const MenuCard({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.description,
+    required this.onPressed,
+    this.isActive = false,
+    this.isImportant = false,
+  });
+
+  @override
+  State<MenuCard> createState() => _MenuCardState();
+}
+
+class _MenuCardState extends State<MenuCard> {
+  double _scale = 1.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final activeColor = theme.colorScheme.primary;
+
+    Color cardColor;
+    Color borderColor;
+    Color iconColor;
+    Color textColor;
+    Color descColor;
+
+    if (widget.isActive) {
+      cardColor = activeColor.withOpacity(isDark ? 0.15 : 0.08);
+      borderColor = activeColor;
+      iconColor = activeColor;
+      textColor = activeColor;
+      descColor = activeColor.withOpacity(0.7);
+    } else {
+      cardColor = isDark ? theme.cardColor.withOpacity(0.5) : theme.cardColor;
+      borderColor = isDark ? theme.dividerColor.withOpacity(0.1) : theme.dividerColor.withOpacity(0.5);
+      iconColor = theme.colorScheme.onSurface;
+      textColor = theme.colorScheme.onSurface.withOpacity(0.9);
+      descColor = theme.colorScheme.onSurface.withOpacity(0.4);
+    }
+
     return GestureDetector(
-      onTap: onPressed,
-      child: GlassContainer(
-        borderRadius: 20,
-        opacity: isActive ? 0.25 : 0.08,
-        color: isActive ? Colors.cyanAccent : const Color(0xFF334155),
-        border: Border.all(
-          color: isActive ? Colors.cyanAccent.withOpacity(0.5) : Colors.white.withOpacity(0.05),
-          width: 1.5,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isActive ? Colors.cyanAccent : Colors.white70,
-              size: 28,
-              shadows: isActive ? [
-                Shadow(color: Colors.cyanAccent.withOpacity(0.8), blurRadius: 15)
-              ] : null,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              style: GoogleFonts.shareTechMono(
-                color: isActive ? Colors.cyanAccent : Colors.white38,
-                fontSize: 10,
-                letterSpacing: 1.2,
-                fontWeight: FontWeight.bold,
+      onTapDown: (_) => setState(() => _scale = 0.95),
+      onTapUp: (_) {
+        setState(() => _scale = 1.0);
+        widget.onPressed();
+      },
+      onTapCancel: () => setState(() => _scale = 1.0),
+      child: AnimatedScale(
+        scale: _scale,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOutCubic,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: borderColor, width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: isDark ? Colors.black.withOpacity(0.15) : Colors.black.withOpacity(0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
               ),
-            ),
-          ],
+            ],
+          ),
+          child: Stack(
+            children: [
+              if (widget.isImportant && !widget.isActive)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.secondary,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.colorScheme.secondary.withOpacity(0.5),
+                          blurRadius: 4,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: widget.isActive 
+                            ? activeColor.withOpacity(0.1) 
+                            : theme.colorScheme.onSurface.withOpacity(0.04),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        widget.icon,
+                        color: iconColor,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.label,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        color: textColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.description,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.outfit(
+                        color: descColor,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+void _showIncognitoExplanationDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      final theme = Theme.of(context);
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(LucideIcons.eyeOff, color: theme.colorScheme.primary),
+            const SizedBox(width: 10),
+            Text(
+              'Incognito Mode Enabled',
+              style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'You have switched to a private browsing session. Zyro Browser will protect your privacy with the following rules:',
+              style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 12),
+            _buildBulletPoint(theme, 'Browsing history and search history will not be saved.'),
+            _buildBulletPoint(theme, 'Cookies and site storage are cleared when closed.'),
+            _buildBulletPoint(theme, 'Form data and inputs will not be remembered.'),
+            _buildBulletPoint(theme, 'Bookmarks and downloads you manually save will still remain.'),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.colorScheme.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Got it',
+              style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+Widget _buildBulletPoint(ThemeData theme, String text) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(LucideIcons.check, size: 14, color: theme.colorScheme.secondary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.outfit(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.8)),
+          ),
+        ),
+      ],
+    ),
+  );
 }

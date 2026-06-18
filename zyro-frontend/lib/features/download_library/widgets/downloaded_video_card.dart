@@ -47,6 +47,8 @@ class DownloadedVideoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final file = File(video.localFilePath);
     final fileExists = file.existsSync();
 
@@ -54,10 +56,12 @@ class DownloadedVideoCard extends StatelessWidget {
       height: 96,
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: fileExists ? Colors.white.withValues(alpha: 0.05) : Colors.redAccent.withValues(alpha: 0.3),
+          color: fileExists 
+              ? theme.dividerColor.withOpacity(isDark ? 0.1 : 0.4) 
+              : theme.colorScheme.error.withOpacity(0.3),
         ),
       ),
       child: ClipRRect(
@@ -68,7 +72,7 @@ class DownloadedVideoCard extends StatelessWidget {
             // Thumbnail area
             Container(
               width: 100,
-              color: Colors.black26,
+              color: isDark ? Colors.black26 : Colors.black.withOpacity(0.04),
               child: Stack(
                 alignment: Alignment.center,
                 children: [
@@ -78,10 +82,10 @@ class DownloadedVideoCard extends StatelessWidget {
                       fit: BoxFit.cover,
                       width: 100,
                       height: double.infinity,
-                      errorBuilder: (context, _, __) => const Icon(LucideIcons.video, color: Colors.cyanAccent, size: 28),
+                      errorBuilder: (context, _, __) => Icon(LucideIcons.video, color: theme.colorScheme.primary, size: 28),
                     )
                   else
-                    const Icon(LucideIcons.video, color: Colors.cyanAccent, size: 28),
+                    Icon(LucideIcons.video, color: theme.colorScheme.primary, size: 28),
                   if (video.duration > 0)
                     Positioned(
                       bottom: 4,
@@ -94,15 +98,15 @@ class DownloadedVideoCard extends StatelessWidget {
                         ),
                         child: Text(
                           _formatDuration(video.duration),
-                          style: GoogleFonts.shareTechMono(color: Colors.white, fontSize: 9),
+                          style: GoogleFonts.outfit(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
                   if (!fileExists)
                     Container(
                       color: Colors.black54,
-                      child: const Center(
-                        child: Icon(LucideIcons.alertOctagon, color: Colors.redAccent, size: 24),
+                      child: Center(
+                        child: Icon(LucideIcons.alertOctagon, color: theme.colorScheme.error, size: 24),
                       ),
                     ),
                 ],
@@ -121,7 +125,7 @@ class DownloadedVideoCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.outfit(
-                        color: fileExists ? Colors.white : Colors.white38,
+                        color: fileExists ? theme.colorScheme.onBackground : theme.colorScheme.onBackground.withOpacity(0.4),
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
@@ -132,23 +136,23 @@ class DownloadedVideoCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.cyanAccent.withValues(alpha: 0.1),
+                            color: theme.colorScheme.primary.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             video.quality,
-                            style: GoogleFonts.shareTechMono(color: Colors.cyanAccent, fontSize: 9),
+                            style: GoogleFonts.outfit(color: theme.colorScheme.primary, fontSize: 9, fontWeight: FontWeight.bold),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Text(
                           _formatSize(video.fileSize),
-                          style: GoogleFonts.shareTechMono(color: Colors.white38, fontSize: 10),
+                          style: GoogleFonts.outfit(color: theme.colorScheme.onBackground.withOpacity(0.4), fontSize: 10),
                         ),
                         const SizedBox(width: 8),
                         Text(
                           _formatDate(video.downloadedAt),
-                          style: GoogleFonts.outfit(color: Colors.white38, fontSize: 10),
+                          style: GoogleFonts.outfit(color: theme.colorScheme.onBackground.withOpacity(0.4), fontSize: 10),
                         ),
                       ],
                     ),
@@ -157,7 +161,7 @@ class DownloadedVideoCard extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 2.0),
                         child: Text(
                           'Missing file error',
-                          style: GoogleFonts.shareTechMono(color: Colors.redAccent, fontSize: 9),
+                          style: GoogleFonts.outfit(color: theme.colorScheme.error, fontSize: 9, fontWeight: FontWeight.bold),
                         ),
                       ),
                   ],
@@ -169,7 +173,7 @@ class DownloadedVideoCard extends StatelessWidget {
               width: 48,
               decoration: BoxDecoration(
                 border: Border(
-                  left: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+                  left: BorderSide(color: theme.dividerColor.withOpacity(isDark ? 0.1 : 0.3)),
                 ),
               ),
               child: Column(
@@ -182,7 +186,7 @@ class DownloadedVideoCard extends StatelessWidget {
                       padding: const EdgeInsets.all(8.0),
                       child: Icon(
                         LucideIcons.play,
-                        color: fileExists ? Colors.greenAccent : Colors.white24,
+                        color: fileExists ? Colors.green : theme.colorScheme.onBackground.withOpacity(0.2),
                         size: 20,
                       ),
                     ),
@@ -192,9 +196,9 @@ class DownloadedVideoCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
-                      child: const Icon(
+                      child: Icon(
                         LucideIcons.trash2,
-                        color: Colors.redAccent,
+                        color: theme.colorScheme.error,
                         size: 20,
                       ),
                     ),
