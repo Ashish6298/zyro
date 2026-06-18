@@ -1,0 +1,293 @@
+<svg viewBox="0 0 950 420" width="100%" height="420" xmlns="http://www.w3.org/2000/svg" style="background: #0B0E14; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.6); font-family: 'Outfit', 'Inter', system-ui, sans-serif;">
+  <defs>
+    <!-- Glow Filters -->
+    <filter id="glowCyan" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <filter id="glowMagenta" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <filter id="glowGreen" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Gradients -->
+    <linearGradient id="neonCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F0FF" />
+      <stop offset="100%" stop-color="#0072FF" />
+    </linearGradient>
+    <linearGradient id="neonMagenta" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF007A" />
+      <stop offset="100%" stop-color="#7900FF" />
+    </linearGradient>
+    <linearGradient id="neonGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+
+    <linearGradient id="cardBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#0F172A" stop-opacity="0.95" />
+    </linearGradient>
+  </defs>
+
+  <style>
+    .flow-line {
+      fill: none;
+      stroke-width: 1.5;
+      stroke-dasharray: 6, 6;
+      animation: dashMove 1.5s linear infinite;
+    }
+    .flow-line-static {
+      fill: none;
+      stroke-width: 1.2;
+      stroke-opacity: 0.3;
+    }
+    @keyframes dashMove {
+      to { stroke-dashoffset: -30; }
+    }
+    @keyframes particle {
+      0% { offset-distance: 0%; opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { offset-distance: 100%; opacity: 0; }
+    }
+    .data-particle {
+      animation: particle 3s linear infinite;
+    }
+    .node-card {
+      fill: url(#cardBg);
+      stroke-width: 1.5;
+      backdrop-filter: blur(8px);
+    }
+    .node-title {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      fill: #FFFFFF;
+    }
+    .node-sub {
+      font-size: 8px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      fill: #94A3B8;
+    }
+    .label-text {
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+  </style>
+
+  <!-- Background grid overlay -->
+  <rect width="950" height="420" fill="#0B0E14" />
+  <g opacity="0.1">
+    <path d="M 0,40 L 950,40 M 0,80 L 950,80 M 0,120 L 950,120 M 0,160 L 950,160 M 0,200 L 950,200 M 0,240 L 950,240 M 0,280 L 950,280 M 0,320 L 950,320 M 0,360 L 950,360" stroke="#94A3B8" stroke-width="1" />
+    <path d="M 80,0 L 80,420 M 160,0 L 160,420 M 240,0 L 240,420 M 320,0 L 320,420 M 400,0 L 400,420 M 480,0 L 480,420 M 560,0 L 560,420 M 640,0 L 640,420 M 720,0 L 720,420 M 800,0 L 800,420 M 880,0 L 880,420" stroke="#94A3B8" stroke-width="1" stroke-dasharray="2 4" />
+  </g>
+
+  <!-- Title HUD Banner -->
+  <g transform="translate(40, 35)">
+    <text x="0" y="0" fill="#FFFFFF" font-size="16" font-weight="900" letter-spacing="2">🛠️ ZYRO BROWSER CORE ARCHITECTURE</text>
+    <line x1="0" y1="10" x2="870" y2="10" stroke="#1E293B" stroke-width="2" />
+  </g>
+
+  <!-- DATA PATHS (CONNECTIONS) -->
+  <!-- Path 1: ContentBlockers to Web Page -->
+  <path id="pathBlockers" d="M 180,105 C 205,105 215,180 240,180" class="flow-line-static" stroke="#FF007A" />
+  <path d="M 180,105 C 205,105 215,180 240,180" class="flow-line" stroke="#FF007A" />
+
+  <!-- Path 2: Cosmetic Injection to Web Page -->
+  <path id="pathCosmetic" d="M 180,255 C 205,255 215,180 240,180" class="flow-line-static" stroke="#FF007A" />
+  <path d="M 180,255 C 205,255 215,180 240,180" class="flow-line" stroke="#FF007A" stroke-dasharray="6 6" />
+
+  <!-- Path 3: Web Page to Extension Manager -->
+  <path id="pathSniff" d="M 390,180 L 450,180" class="flow-line-static" stroke="#00F0FF" />
+  <path d="M 390,180 L 450,180" class="flow-line" stroke="#00F0FF" />
+
+  <!-- Path 4: Extension Manager to Tab Manager -->
+  <path id="pathTab" d="M 600,180 C 625,180 635,120 660,120" class="flow-line-static" stroke="#00F0FF" />
+  <path d="M 600,180 C 625,180 635,120 660,120" class="flow-line" stroke="#00F0FF" />
+
+  <!-- Path 5: Extension Manager to Express Backend API -->
+  <path id="pathAPI" d="M 600,180 C 625,180 635,240 660,240" class="flow-line-static" stroke="#00F0FF" />
+  <path d="M 600,180 C 625,180 635,240 660,240" class="flow-line" stroke="#00F0FF" />
+
+  <!-- Path 6: Express Backend to youtube-dl-exec -->
+  <path id="pathYTDL" d="M 810,240 C 835,240 845,155 870,155" class="flow-line-static" stroke="#34D399" />
+  <path d="M 810,240 C 835,240 845,155 870,155" class="flow-line" stroke="#34D399" />
+
+  <!-- Path 7: Express Backend to fluent-ffmpeg -->
+  <path id="pathFFmpeg" d="M 810,240 C 835,240 845,295 870,295" class="flow-line-static" stroke="#34D399" />
+  <path d="M 810,240 C 835,240 845,295 870,295" class="flow-line" stroke="#34D399" />
+
+  <!-- Path 8: fluent-ffmpeg to static downloads/ -->
+  <path id="pathStore" d="M 905,320 L 905,350" class="flow-line-static" stroke="#E2E8F0" />
+  <path d="M 905,320 L 905,350" class="flow-line" stroke="#E2E8F0" />
+
+  <!-- Path 9: Local Downloads back to Web View Player (Loop completion) -->
+  <path id="pathDisk" d="M 870,365 C 650,400 400,300 240,180" class="flow-line-static" stroke="#38BDF8" stroke-dasharray="4 4" />
+  <path d="M 870,365 C 650,400 400,300 240,180" class="flow-line" stroke="#38BDF8" />
+
+  <!-- DATA FLOW PARTICLE ANIMATIONS -->
+  <circle r="4" fill="#FF007A" filter="url(#glowMagenta)" class="data-particle">
+    <animateMotion dur="2.5s" repeatCount="indefinite">
+      <mpath href="#pathBlockers" />
+    </animateMotion>
+  </circle>
+  <circle r="4" fill="#FF007A" filter="url(#glowMagenta)" class="data-particle" style="animation-delay: 1.25s;">
+    <animateMotion dur="2.5s" repeatCount="indefinite">
+      <mpath href="#pathCosmetic" />
+    </animateMotion>
+  </circle>
+  <circle r="4.5" fill="#00F0FF" filter="url(#glowCyan)" class="data-particle">
+    <animateMotion dur="2s" repeatCount="indefinite">
+      <mpath href="#pathSniff" />
+    </animateMotion>
+  </circle>
+  <circle r="4" fill="#00F0FF" filter="url(#glowCyan)" class="data-particle">
+    <animateMotion dur="2.2s" repeatCount="indefinite">
+      <mpath href="#pathTab" />
+    </animateMotion>
+  </circle>
+  <circle r="4" fill="#00F0FF" filter="url(#glowCyan)" class="data-particle" style="animation-delay: 1.1s;">
+    <animateMotion dur="2.2s" repeatCount="indefinite">
+      <mpath href="#pathAPI" />
+    </animateMotion>
+  </circle>
+  <circle r="4.5" fill="#34D399" filter="url(#glowGreen)" class="data-particle">
+    <animateMotion dur="2.4s" repeatCount="indefinite">
+      <mpath href="#pathYTDL" />
+    </animateMotion>
+  </circle>
+  <circle r="4.5" fill="#34D399" filter="url(#glowGreen)" class="data-particle" style="animation-delay: 1.2s;">
+    <animateMotion dur="2.4s" repeatCount="indefinite">
+      <mpath href="#pathFFmpeg" />
+    </animateMotion>
+  </circle>
+  <circle r="4" fill="#FFFFFF" class="data-particle">
+    <animateMotion dur="1.8s" repeatCount="indefinite">
+      <mpath href="#pathStore" />
+    </animateMotion>
+  </circle>
+  <circle r="4.5" fill="#38BDF8" filter="url(#glowCyan)" class="data-particle">
+    <animateMotion dur="3.5s" repeatCount="indefinite">
+      <mpath href="#pathDisk" />
+    </animateMotion>
+  </circle>
+
+  <!-- ARCHITECTURE NODES (CARDS) -->
+
+  <!-- NODE 1: ContentBlockers -->
+  <g transform="translate(30, 75)">
+    <rect width="150" height="60" rx="8" class="node-card" stroke="url(#neonMagenta)" />
+    <text x="75" y="24" text-anchor="middle" class="node-title">Content Blocker</text>
+    <text x="75" y="38" text-anchor="middle" class="node-sub">Network rule blocking</text>
+    <text x="75" y="48" text-anchor="middle" class="node-sub">Stops ads + trackers</text>
+  </g>
+
+  <!-- NODE 2: Cosmetic Injections -->
+  <g transform="translate(30, 225)">
+    <rect width="150" height="60" rx="8" class="node-card" stroke="url(#neonMagenta)" />
+    <text x="75" y="24" text-anchor="middle" class="node-title">Cosmetic CSS Engine</text>
+    <text x="75" y="38" text-anchor="middle" class="node-sub">DOM filter injection</text>
+    <text x="75" y="48" text-anchor="middle" class="node-sub">Removes empty space</text>
+  </g>
+
+  <!-- NODE 3: Web Page Viewport -->
+  <g transform="translate(240, 150)">
+    <rect width="150" height="60" rx="8" class="node-card" stroke="url(#neonCyan)" />
+    <text x="75" y="24" text-anchor="middle" class="node-title">Web Viewport</text>
+    <text x="75" y="38" text-anchor="middle" class="node-sub">InAppWebView core</text>
+    <text x="75" y="48" text-anchor="middle" class="node-sub">Sniffs media stream links</text>
+  </g>
+
+  <!-- NODE 4: Extension Manager -->
+  <g transform="translate(450, 150)">
+    <rect width="150" height="60" rx="8" class="node-card" stroke="url(#neonCyan)" />
+    <text x="75" y="24" text-anchor="middle" class="node-title">Extension Manager</text>
+    <text x="75" y="38" text-anchor="middle" class="node-sub">Decentralized registry</text>
+    <text x="75" y="48" text-anchor="middle" class="node-sub">Handles custom scripts</text>
+  </g>
+
+  <!-- NODE 5: Tab Manager State -->
+  <g transform="translate(660, 90)">
+    <rect width="150" height="60" rx="8" class="node-card" stroke="url(#neonCyan)" />
+    <text x="75" y="24" text-anchor="middle" class="node-title">TabManager State</text>
+    <text x="75" y="38" text-anchor="middle" class="node-sub">Provider context registry</text>
+    <text x="75" y="48" text-anchor="middle" class="node-sub">Multiplexes tabs list</text>
+  </g>
+
+  <!-- NODE 6: Express Backend Server -->
+  <g transform="translate(660, 210)">
+    <rect width="150" height="60" rx="8" class="node-card" stroke="url(#neonMagenta)" />
+    <text x="75" y="24" text-anchor="middle" class="node-title">Express Backend</text>
+    <text x="75" y="38" text-anchor="middle" class="node-sub">Node.js media service</text>
+    <text x="75" y="48" text-anchor="middle" class="node-sub">Handles API routes</text>
+  </g>
+
+  <!-- NODE 7: youtube-dl Core -->
+  <g transform="translate(870, 130)">
+    <rect width="70" height="50" rx="8" class="node-card" stroke="url(#neonGreen)" />
+    <text x="35" y="20" text-anchor="middle" class="node-title">youtube-dl</text>
+    <text x="35" y="34" text-anchor="middle" class="node-sub">Extracts streams</text>
+  </g>
+
+  <!-- NODE 8: FFmpeg Transcoder -->
+  <g transform="translate(870, 270)">
+    <rect width="70" height="50" rx="8" class="node-card" stroke="url(#neonGreen)" />
+    <text x="35" y="20" text-anchor="middle" class="node-title">FFmpeg</text>
+    <text x="35" y="34" text-anchor="middle" class="node-sub">Muxes streams</text>
+  </g>
+
+  <!-- NODE 9: downloads/ static assets -->
+  <g transform="translate(870, 350)">
+    <rect width="70" height="30" rx="6" class="node-card" stroke="#E2E8F0" />
+    <text x="35" y="18" text-anchor="middle" class="node-title">downloads/</text>
+  </g>
+
+  <!-- PATH LABELS / MESSAGES (Centered on clean translucent backing pills) -->
+  <!-- 1. blocks ads -->
+  <rect x="180" y="111" width="60" height="12" rx="3" fill="#0B0E14" opacity="0.95"/>
+  <text x="210" y="120" class="label-text" fill="#94A3B8" text-anchor="middle">blocks ads</text>
+
+  <!-- 2. hides ad DOM -->
+  <rect x="175" y="231" width="70" height="12" rx="3" fill="#0B0E14" opacity="0.95"/>
+  <text x="210" y="240" class="label-text" fill="#94A3B8" text-anchor="middle">hides ad DOM</text>
+
+  <!-- 3. sniffs link -->
+  <rect x="395" y="171" width="50" height="12" rx="3" fill="#0B0E14" opacity="0.95"/>
+  <text x="420" y="180" class="label-text" fill="#94A3B8" text-anchor="middle">sniffs link</text>
+
+  <!-- 4. updates HUD -->
+  <rect x="600" y="131" width="60" height="12" rx="3" fill="#0B0E14" opacity="0.95"/>
+  <text x="630" y="140" class="label-text" fill="#94A3B8" text-anchor="middle">updates HUD</text>
+
+  <!-- 5. POST API call -->
+  <rect x="595" y="211" width="70" height="12" rx="3" fill="#0B0E14" opacity="0.95"/>
+  <text x="630" y="220" class="label-text" fill="#94A3B8" text-anchor="middle">POST API call</text>
+
+  <!-- 6. queries stream -->
+  <rect x="805" y="186" width="60" height="12" rx="3" fill="#0B0E14" opacity="0.95"/>
+  <text x="835" y="195" class="label-text" fill="#94A3B8" text-anchor="middle">queries stream</text>
+
+  <!-- 7. pipes stream -->
+  <rect x="805" y="266" width="60" height="12" rx="3" fill="#0B0E14" opacity="0.95"/>
+  <text x="835" y="275" class="label-text" fill="#94A3B8" text-anchor="middle">pipes stream</text>
+
+  <!-- 8. Save Muxed Video File -->
+  <rect x="390" y="366" width="260" height="12" rx="3" fill="#0B0E14" opacity="0.95"/>
+  <text x="520" y="375" class="label-text" fill="#38BDF8" text-anchor="middle">Save Muxed Video File statically to local client storage</text>
+</svg>

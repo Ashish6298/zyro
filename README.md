@@ -51,37 +51,11 @@ A high-performance media parsing server that communicates with the Flutter clien
 
 The interaction flow between the sandboxed client, the extension engine, and the video downloader microservice is structured as follows:
 
-```mermaid
-graph TD
-    %% Styling Nodes
-    classDef client fill:#1E1B4B,stroke:#00F0FF,stroke-width:2px,color:#FFF;
-    classDef server fill:#180828,stroke:#FF007A,stroke-width:2px,color:#FFF;
-    classDef external fill:#022C22,stroke:#10B981,stroke-width:1px,color:#FFF;
+<p align="center">
+  <img src="architecture.svg" width="100%" alt="Zyro Browser Core Architecture Flow">
+</p>
 
-    subgraph "Flutter Frontend Client (zyro-frontend)"
-        UI["Cyber-Bento UI Dock & Panels"]:::client
-        TabM["TabManager State Provider"]:::client
-        WV["WebViewWrapper (InAppWebView)"]:::client
-        ExtM["ExtensionManager Registry"]:::client
-    end
-
-    subgraph "Node.js Backend Server (zyro-backend)"
-        API["Express App (PORT 3000)"]:::server
-        YTDL["youtube-dl-exec Extractor"]:::server
-        FFmpeg["fluent-ffmpeg Transcoder"]:::server
-        Store["Static File Manager"]:::server
-    end
-
-    %% Interaction Paths
-    UI --> TabM
-    TabM --> WV
-    WV -.->|"Intercept Streams"| ExtM
-    ExtM -->|"POST /api/video/download"| API
-    API --> YTDL
-    YTDL -->|"Pipes Streams"| FFmpeg
-    FFmpeg -->|"Generates Muxed MP4"| Store
-    Store -.->|"Serve via static routes"| UI
-```
+*✨ Live data-flow animation — glowing dots travel the connector lines to show requests, messages, and files moving through the system in real time.*
 
 ---
 
