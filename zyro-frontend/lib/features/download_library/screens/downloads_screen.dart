@@ -136,35 +136,40 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'ACTIVE DOWNLOADS',
-                          style: GoogleFonts.outfit(
-                            color: theme.colorScheme.secondary,
-                            fontSize: 11,
-                            letterSpacing: 1.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.secondary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '${active.length}',
-                            style: GoogleFonts.outfit(
-                              color: theme.colorScheme.secondary,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
+                        Row(
+                          children: [
+                            Text(
+                              'ACTIVE DOWNLOADS',
+                              style: GoogleFonts.outfit(
+                                color: theme.colorScheme.secondary,
+                                fontSize: 12,
+                                letterSpacing: 1.5,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.secondary.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '${active.length}',
+                                style: GoogleFonts.outfit(
+                                  color: theme.colorScheme.secondary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
                   ...active.map((req) => _buildActiveDownloadCard(context, req, controller, theme, isDark)),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                 ],
                 if (completed.isNotEmpty) ...[
                   Padding(
@@ -172,29 +177,34 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'DOWNLOADED VIDEOS',
-                          style: GoogleFonts.outfit(
-                            color: theme.colorScheme.primary,
-                            fontSize: 11,
-                            letterSpacing: 1.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '${completed.length}',
-                            style: GoogleFonts.outfit(
-                              color: theme.colorScheme.primary,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
+                        Row(
+                          children: [
+                            Text(
+                              'DOWNLOADED VIDEOS',
+                              style: GoogleFonts.outfit(
+                                color: theme.colorScheme.primary,
+                                fontSize: 12,
+                                letterSpacing: 1.5,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '${completed.length}',
+                                style: GoogleFonts.outfit(
+                                  color: theme.colorScheme.primary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -284,7 +294,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     final progress = req.progress;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? theme.cardColor.withOpacity(0.4) : theme.cardColor,
@@ -298,7 +308,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
         boxShadow: [
           BoxShadow(
             color: isDark ? Colors.black.withOpacity(0.2) : Colors.black.withOpacity(0.02),
-            blurRadius: 10,
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -307,8 +317,23 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isFailed 
+                      ? theme.colorScheme.error.withOpacity(0.1) 
+                      : theme.colorScheme.secondary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  isFailed ? LucideIcons.alertTriangle : LucideIcons.downloadCloud,
+                  color: isFailed ? theme.colorScheme.error : theme.colorScheme.secondary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -319,7 +344,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.outfit(
                         color: theme.colorScheme.onSurface,
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -336,6 +361,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               IconButton(
                 icon: Icon(
                   isFailed ? LucideIcons.trash2 : LucideIcons.xCircle,
@@ -347,7 +373,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                       ? theme.colorScheme.error.withOpacity(0.08)
                       : theme.colorScheme.onSurface.withOpacity(0.03),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(8),
                 ),
                 onPressed: () {
                   controller.removeFailedRequest(req.id);
@@ -355,17 +381,17 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(8),
                   child: LinearProgressIndicator(
                     value: isFailed ? 0 : (progress > 0 ? progress : null),
                     color: theme.colorScheme.secondary,
                     backgroundColor: theme.dividerColor.withOpacity(isDark ? 0.08 : 0.15),
-                    minHeight: 6,
+                    minHeight: 8,
                   ),
                 ),
               ),
@@ -373,7 +399,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
               Text(
                 isFailed ? 'FAILED' : '${(progress * 100).toInt()}%',
                 style: GoogleFonts.outfit(
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  color: theme.colorScheme.onSurface.withOpacity(0.8),
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),
@@ -381,13 +407,13 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             ],
           ),
           if (isFailed && req.error != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: theme.colorScheme.error.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 req.error!,

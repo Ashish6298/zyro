@@ -60,7 +60,7 @@ class _DownloadedVideoCardState extends State<DownloadedVideoCard> {
     final fileExists = file.existsSync();
 
     return GestureDetector(
-      onTapDown: (_) => setState(() => _scale = 0.98),
+      onTapDown: (_) => setState(() => _scale = 0.97),
       onTapUp: (_) => setState(() => _scale = 1.0),
       onTapCancel: () => setState(() => _scale = 1.0),
       child: AnimatedScale(
@@ -86,59 +86,83 @@ class _DownloadedVideoCardState extends State<DownloadedVideoCard> {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                // Thumbnail area with aspect ratio
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    width: 110,
-                    height: 68,
-                    color: isDark ? Colors.black38 : Colors.black.withOpacity(0.04),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        if (widget.video.thumbnailPath.isNotEmpty && widget.video.thumbnailPath.startsWith('http'))
-                          Image.network(
-                            widget.video.thumbnailPath,
-                            fit: BoxFit.cover,
-                            width: 110,
-                            height: 68,
-                            errorBuilder: (context, _, __) => Icon(LucideIcons.video, color: theme.colorScheme.primary, size: 24),
-                          )
-                        else
-                          Icon(LucideIcons.video, color: theme.colorScheme.primary, size: 24),
-                        if (widget.video.duration > 0)
-                          Positioned(
-                            bottom: 4,
-                            right: 4,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.75),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                _formatDuration(widget.video.duration),
-                                style: GoogleFonts.outfit(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
-                              ),
+                // Widescreen Thumbnail
+                GestureDetector(
+                  onTap: fileExists ? widget.onPlay : null,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          width: 130,
+                          height: 74,
+                          color: isDark ? Colors.black38 : Colors.black.withOpacity(0.04),
+                          child: widget.video.thumbnailPath.isNotEmpty && widget.video.thumbnailPath.startsWith('http')
+                              ? Image.network(
+                                  widget.video.thumbnailPath,
+                                  fit: BoxFit.cover,
+                                  width: 130,
+                                  height: 74,
+                                  errorBuilder: (context, _, __) => Icon(LucideIcons.video, color: theme.colorScheme.primary, size: 24),
+                                )
+                              : Icon(LucideIcons.video, color: theme.colorScheme.primary, size: 24),
+                        ),
+                      ),
+                      // Gradient overlay for depth
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.black.withOpacity(0.4),
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.4),
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
                             ),
                           ),
-                        if (!fileExists)
-                          Container(
-                            color: Colors.black54,
+                        ),
+                      ),
+                      if (widget.video.duration > 0)
+                        Positioned(
+                          bottom: 6,
+                          right: 6,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.8),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              _formatDuration(widget.video.duration),
+                              style: GoogleFonts.outfit(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      if (!fileExists)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.6),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                             child: Center(
-                              child: Icon(LucideIcons.alertOctagon, color: theme.colorScheme.error, size: 22),
+                              child: Icon(LucideIcons.alertOctagon, color: theme.colorScheme.error, size: 24),
                             ),
                           ),
-                      ],
-                    ),
+                        ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
 
-                // Content Details
+                // Details & Action buttons
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,38 +174,57 @@ class _DownloadedVideoCardState extends State<DownloadedVideoCard> {
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.outfit(
                           color: fileExists ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withOpacity(0.4),
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          height: 1.2,
+                          height: 1.25,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       Wrap(
-                        spacing: 8,
+                        spacing: 6,
                         runSpacing: 4,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                             decoration: BoxDecoration(
-                              color: theme.colorScheme.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
+                              gradient: LinearGradient(
+                                colors: [
+                                  theme.colorScheme.primary,
+                                  theme.colorScheme.primary.withOpacity(0.8),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: theme.colorScheme.primary.withOpacity(0.2),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
                             child: Text(
                               widget.video.quality,
                               style: GoogleFonts.outfit(
-                                color: theme.colorScheme.primary,
-                                fontSize: 8,
+                                color: Colors.white,
+                                fontSize: 9,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
                           ),
-                          Text(
-                            _formatSize(widget.video.fileSize),
-                            style: GoogleFonts.outfit(
-                              color: theme.colorScheme.onSurface.withOpacity(0.4),
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              _formatSize(widget.video.fileSize),
+                              style: GoogleFonts.outfit(
+                                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                           Text(
@@ -189,7 +232,7 @@ class _DownloadedVideoCardState extends State<DownloadedVideoCard> {
                             style: GoogleFonts.outfit(
                               color: theme.colorScheme.onSurface.withOpacity(0.4),
                               fontSize: 9,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
@@ -205,36 +248,75 @@ class _DownloadedVideoCardState extends State<DownloadedVideoCard> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
 
-                // Actions Section
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+                // Premium Actions Stack
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    IconButton(
-                      icon: Icon(
-                        LucideIcons.play,
-                        color: fileExists ? const Color(0xFF34D399) : theme.colorScheme.onSurface.withOpacity(0.2),
-                        size: 16,
+                    // Play Action (Vibrant Circle)
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: fileExists ? widget.onPlay : null,
+                        borderRadius: BorderRadius.circular(22),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: fileExists
+                                ? const LinearGradient(
+                                    colors: [Color(0xFF34D399), Color(0xFF059669)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )
+                                : null,
+                            color: fileExists ? null : theme.colorScheme.onSurface.withOpacity(0.05),
+                            boxShadow: fileExists
+                                ? [
+                                    BoxShadow(
+                                      color: const Color(0xFF34D399).withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Icon(
+                            LucideIcons.play,
+                            color: fileExists ? Colors.white : theme.colorScheme.onSurface.withOpacity(0.2),
+                            size: 16,
+                          ),
+                        ),
                       ),
-                      style: IconButton.styleFrom(
-                        backgroundColor: fileExists 
-                            ? const Color(0xFF34D399).withOpacity(0.08)
-                            : theme.colorScheme.onSurface.withOpacity(0.02),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.all(8),
-                      ),
-                      onPressed: fileExists ? widget.onPlay : null,
                     ),
-                    const SizedBox(width: 6),
-                    IconButton(
-                      icon: Icon(LucideIcons.trash2, color: theme.colorScheme.error.withOpacity(0.85), size: 16),
-                      style: IconButton.styleFrom(
-                        backgroundColor: theme.colorScheme.error.withOpacity(0.08),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.all(8),
+                    const SizedBox(height: 8),
+                    // Delete Action (Subtle Circle)
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: widget.onDelete,
+                        borderRadius: BorderRadius.circular(18),
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: theme.colorScheme.error.withOpacity(0.08),
+                            border: Border.all(
+                              color: theme.colorScheme.error.withOpacity(0.12),
+                              width: 1,
+                            ),
+                          ),
+                          child: Icon(
+                            LucideIcons.trash2,
+                            color: theme.colorScheme.error.withOpacity(0.85),
+                            size: 14,
+                          ),
+                        ),
                       ),
-                      onPressed: widget.onDelete,
                     ),
                   ],
                 ),
