@@ -1,0 +1,228 @@
+<svg viewBox="0 0 800 130" width="100%" height="130" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Glow Filters -->
+    <filter id="neonGlowCyan" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <filter id="neonGlowMagenta" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <filter id="neonGlowGreen" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <filter id="neonGlowSilver" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <filter id="neonGlowEmerald" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Gradients -->
+    <linearGradient id="gradCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F0FF" />
+      <stop offset="100%" stop-color="#0072FF" />
+    </linearGradient>
+    <linearGradient id="gradMagenta" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF007A" />
+      <stop offset="100%" stop-color="#7900FF" />
+    </linearGradient>
+    <linearGradient id="gradGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4ADE80" />
+      <stop offset="100%" stop-color="#15803D" />
+    </linearGradient>
+    <linearGradient id="gradSilver" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#cbd5e1" />
+      <stop offset="100%" stop-color="#475569" />
+    </linearGradient>
+    <linearGradient id="gradEmerald" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+
+    <!-- Card Background Gradient -->
+    <linearGradient id="cardBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#0B0E14" stop-opacity="0.95" />
+    </linearGradient>
+  </defs>
+
+  <style>
+    .badge-card {
+      fill: url(#cardBg);
+      stroke-width: 1.5;
+      backdrop-filter: blur(8px);
+    }
+    .badge-title {
+      font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      fill: #FFFFFF;
+    }
+    .badge-subtitle {
+      font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      fill: #94A3B8;
+    }
+    .tech-logo {
+      transform-origin: center;
+    }
+  </style>
+
+  <!-- 1. FLUTTER BADGE -->
+  <g transform="translate(80, 15)">
+    <g>
+      <animateTransform 
+        attributeName="transform" 
+        type="translate" 
+        values="0,0; 0,-6; 0,0" 
+        dur="3s" 
+        repeatCount="indefinite"
+      />
+      <!-- Outer Glow -->
+      <rect x="-65" y="0" width="130" height="90" rx="16" fill="none" stroke="url(#gradCyan)" stroke-width="2" filter="url(#neonGlowCyan)" opacity="0.3"/>
+      <!-- Main Card -->
+      <rect x="-65" y="0" width="130" height="90" rx="16" class="badge-card" stroke="url(#gradCyan)"/>
+      
+      <!-- Tech Logo (Flutter) -->
+      <g transform="translate(0, 26) scale(0.9)">
+        <path d="M -8,-12 L 0,-4 L 8,-12 L 0,-20 Z" fill="#00F0FF"/>
+        <path d="M -4,0 L 0,4 L 8,-4 L 4,-8 Z" fill="#0072FF"/>
+      </g>
+      
+      <!-- Text -->
+      <text x="0" y="58" class="badge-title" text-anchor="middle">FLUTTER</text>
+      <text x="0" y="74" class="badge-subtitle" text-anchor="middle">v3.x CLIENT</text>
+    </g>
+  </g>
+
+  <!-- 2. INAPPWEBVIEW BADGE -->
+  <g transform="translate(240, 15)">
+    <g>
+      <animateTransform 
+        attributeName="transform" 
+        type="translate" 
+        values="0,-3; 0,3; 0,-3" 
+        dur="3.4s" 
+        repeatCount="indefinite"
+      />
+      <!-- Outer Glow -->
+      <rect x="-65" y="0" width="130" height="90" rx="16" fill="none" stroke="url(#gradMagenta)" stroke-width="2" filter="url(#neonGlowMagenta)" opacity="0.3"/>
+      <!-- Main Card -->
+      <rect x="-65" y="0" width="130" height="90" rx="16" class="badge-card" stroke="url(#gradMagenta)"/>
+      
+      <!-- Tech Logo (Webview Globe) -->
+      <g transform="translate(0, 26)">
+        <circle cx="0" cy="-6" r="10" fill="none" stroke="#FF007A" stroke-width="1.5"/>
+        <ellipse cx="0" cy="-6" rx="4" ry="10" fill="none" stroke="#FF007A" stroke-width="1"/>
+        <line x1="-10" y1="-6" x2="10" y2="-6" stroke="#FF007A" stroke-width="1"/>
+      </g>
+      
+      <!-- Text -->
+      <text x="0" y="58" class="badge-title" text-anchor="middle">WEBVIEW CORE</text>
+      <text x="0" y="74" class="badge-subtitle" text-anchor="middle">InAppWebView</text>
+    </g>
+  </g>
+
+  <!-- 3. NODE.JS BADGE -->
+  <g transform="translate(400, 15)">
+    <g>
+      <animateTransform 
+        attributeName="transform" 
+        type="translate" 
+        values="0,0; 0,-6; 0,0" 
+        dur="3.8s" 
+        repeatCount="indefinite"
+      />
+      <!-- Outer Glow -->
+      <rect x="-65" y="0" width="130" height="90" rx="16" fill="none" stroke="url(#gradGreen)" stroke-width="2" filter="url(#neonGlowGreen)" opacity="0.3"/>
+      <!-- Main Card -->
+      <rect x="-65" y="0" width="130" height="90" rx="16" class="badge-card" stroke="url(#gradGreen)"/>
+      
+      <!-- Tech Logo (Node.js) -->
+      <g transform="translate(0, 26)">
+        <polygon points="0,-15 10,-9 10,3 0,9 -10,3 -10,-9" fill="none" stroke="#4ADE80" stroke-width="1.8"/>
+        <circle cx="0" cy="-3" r="3" fill="#4ADE80"/>
+      </g>
+      
+      <!-- Text -->
+      <text x="0" y="58" class="badge-title" text-anchor="middle">NODE.JS</text>
+      <text x="0" y="74" class="badge-subtitle" text-anchor="middle">v18+ BACKEND</text>
+    </g>
+  </g>
+
+  <!-- 4. EXPRESS BADGE -->
+  <g transform="translate(560, 15)">
+    <g>
+      <animateTransform 
+        attributeName="transform" 
+        type="translate" 
+        values="0,-3; 0,3; 0,-3" 
+        dur="3.2s" 
+        repeatCount="indefinite"
+      />
+      <!-- Outer Glow -->
+      <rect x="-65" y="0" width="130" height="90" rx="16" fill="none" stroke="url(#gradSilver)" stroke-width="2" filter="url(#neonGlowSilver)" opacity="0.3"/>
+      <!-- Main Card -->
+      <rect x="-65" y="0" width="130" height="90" rx="16" class="badge-card" stroke="url(#gradSilver)"/>
+      
+      <!-- Tech Logo (Express) -->
+      <g transform="translate(0, 26)">
+        <text x="0" y="1" font-family="Impact, sans-serif" font-size="18" font-style="italic" fill="#cbd5e1" text-anchor="middle">ex</text>
+      </g>
+      
+      <!-- Text -->
+      <text x="0" y="58" class="badge-title" text-anchor="middle">EXPRESS.JS</text>
+      <text x="0" y="74" class="badge-subtitle" text-anchor="middle">API GATEWAY</text>
+    </g>
+  </g>
+
+  <!-- 5. FFMEPG BADGE -->
+  <g transform="translate(720, 15)">
+    <g>
+      <animateTransform 
+        attributeName="transform" 
+        type="translate" 
+        values="0,0; 0,-6; 0,0" 
+        dur="3.6s" 
+        repeatCount="indefinite"
+      />
+      <!-- Outer Glow -->
+      <rect x="-65" y="0" width="130" height="90" rx="16" fill="none" stroke="url(#gradEmerald)" stroke-width="2" filter="url(#neonGlowEmerald)" opacity="0.3"/>
+      <!-- Main Card -->
+      <rect x="-65" y="0" width="130" height="90" rx="16" class="badge-card" stroke="url(#gradEmerald)"/>
+      
+      <!-- Tech Logo (FFmpeg) -->
+      <g transform="translate(0, 22) scale(0.9)">
+        <path d="M -10,-10 L 5,5 L 0,5 L -7,-2 L -7,5 L -10,5 Z" fill="#34D399"/>
+        <path d="M 5,-10 L 5,-4 L -2,-4 L 2,-8 L -5,-8 L -5,-10 Z" fill="#34D399"/>
+      </g>
+      
+      <!-- Text -->
+      <text x="0" y="58" class="badge-title" text-anchor="middle">FFMPEG MUXER</text>
+      <text x="0" y="74" class="badge-subtitle" text-anchor="middle">TRANSCODING</text>
+    </g>
+  </g>
+</svg>
