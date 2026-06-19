@@ -8,6 +8,7 @@ import 'core/theme/theme_controller.dart';
 import 'core/theme/app_theme.dart';
 import 'features/splash/screens/splash_screen.dart';
 import 'features/video_downloader/controllers/download_controller.dart';
+import 'features/extensions/dev_tools/dev_tools_controller.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,10 +16,11 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeController()),
-        ChangeNotifierProvider(create: (_) => TabManager()..addNewTab()),
+        ChangeNotifierProvider(create: (_) => TabManager()),
         ChangeNotifierProvider(create: (_) => BrowserDataManager()),
         ChangeNotifierProvider(create: (_) => ExtensionManager()),
         ChangeNotifierProvider(create: (_) => DownloadController()),
+        ChangeNotifierProvider(create: (_) => DevToolsController()),
       ],
       child: const ZyroApp(),
     ),

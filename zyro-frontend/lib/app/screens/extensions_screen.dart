@@ -206,6 +206,67 @@ class ExtensionCard extends StatefulWidget {
 class _ExtensionCardState extends State<ExtensionCard> {
   double _scale = 1.0;
 
+  void _showDeleteConfirmation(BuildContext context, ExtensionModel extension) {
+    final theme = Theme.of(context);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: theme.cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(LucideIcons.alertTriangle, color: theme.colorScheme.error, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'Remove ${extension.name}?',
+              style: GoogleFonts.outfit(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'This extension will be moved back to the available list and can be installed again later.',
+          style: GoogleFonts.outfit(
+            color: theme.colorScheme.onSurface.withOpacity(0.7),
+            fontSize: 13,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'CANCEL',
+              style: GoogleFonts.outfit(
+                color: theme.colorScheme.onSurface.withOpacity(0.5),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.colorScheme.error,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              widget.manager.uninstallExtension(extension.id);
+            },
+            child: Text(
+              'REMOVE',
+              style: GoogleFonts.outfit(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -292,13 +353,30 @@ class _ExtensionCardState extends State<ExtensionCard> {
               Align(
                 alignment: Alignment.centerRight,
                 child: widget.isInstalled
-                    ? Switch(
-                        value: extension.isEnabled,
-                        onChanged: (_) => widget.manager.toggleExtension(extension.id),
-                        activeColor: theme.colorScheme.primary,
-                        activeTrackColor: theme.colorScheme.primary.withOpacity(0.2),
-                        inactiveThumbColor: theme.colorScheme.onSurface.withOpacity(0.4),
-                        inactiveTrackColor: theme.colorScheme.onSurface.withOpacity(0.1),
+                    ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (extension.id != 'ad_blocker_downloader') ...[
+                            IconButton(
+                              icon: Icon(LucideIcons.trash2, color: theme.colorScheme.error.withOpacity(0.85), size: 16),
+                              style: IconButton.styleFrom(
+                                backgroundColor: theme.colorScheme.error.withOpacity(0.08),
+                                padding: const EdgeInsets.all(8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              onPressed: () => _showDeleteConfirmation(context, extension),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          Switch(
+                            value: extension.isEnabled,
+                            onChanged: (_) => widget.manager.toggleExtension(extension.id),
+                            activeColor: theme.colorScheme.primary,
+                            activeTrackColor: theme.colorScheme.primary.withOpacity(0.2),
+                            inactiveThumbColor: theme.colorScheme.onSurface.withOpacity(0.4),
+                            inactiveTrackColor: theme.colorScheme.onSurface.withOpacity(0.1),
+                          ),
+                        ],
                       )
                     : Container(
                         padding: const EdgeInsets.all(8),

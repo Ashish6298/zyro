@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
 import '../../../core/constants/app_assets.dart';
+import '../../../core/tab_manager.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../app/screens/browser_main.dart';
@@ -106,6 +107,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     // Wait for the animation to complete and preloading tasks
     await Future.wait([
       Provider.of<ThemeController>(context, listen: false).init(),
+      Provider.of<TabManager>(context, listen: false).loadSavedSessionOrDefault(),
       Future.delayed(const Duration(milliseconds: 4400)), // Ensure minimum splash duration
     ]);
 

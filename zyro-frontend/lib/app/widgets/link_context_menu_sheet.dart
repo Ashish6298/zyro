@@ -9,6 +9,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/tab_manager.dart';
 import '../../core/browser_data_manager.dart';
 import '../../core/models/link_metadata.dart';
+import '../../core/extension_manager.dart';
+import '../../features/extensions/dev_tools/dev_tools_extension.dart';
 
 class LinkContextMenuPopup extends StatelessWidget {
   final LinkMetadata metadata;
@@ -197,6 +199,19 @@ class LinkContextMenuPopup extends StatelessWidget {
             _showPreviewDialog(context, theme);
           },
         ),
+        if (Provider.of<ExtensionManager>(context, listen: false).isExtensionEnabled('dev_tools'))
+          _buildActionItem(
+            theme,
+            icon: LucideIcons.code,
+            title: 'Inspect',
+            onTap: () {
+              Navigator.pop(context);
+              final controller = tabManager.currentTab?.controller;
+              if (controller != null) {
+                DevToolsExtension.showPanel(context, controller);
+              }
+            },
+          ),
         _buildActionItem(
           theme,
           icon: LucideIcons.copy,

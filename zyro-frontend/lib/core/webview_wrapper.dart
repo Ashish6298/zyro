@@ -14,6 +14,9 @@ import '../features/video_downloader/widgets/quality_selector_sheet.dart';
 
 import '../features/video_downloader/controllers/download_controller.dart';
 import '../features/video_downloader/services/video_detection_service.dart';
+import '../features/extensions/dev_tools/dev_tools_controller.dart';
+import '../features/extensions/dev_tools/dev_tools_service.dart';
+import '../features/extensions/dev_tools/dev_tools_models.dart';
 
 class WebViewWrapper extends StatefulWidget {
   final TabModel tab;
@@ -89,6 +92,7 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
         builtInZoomControls: true,
         displayZoomControls: false,
         useOnDownloadStart: true,
+        useOnLoadResource: true,
         safeBrowsingEnabled: true,
         mixedContentMode: MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
         incognito: widget.tab.isIncognito,
@@ -203,8 +207,28 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
           }
         }
 
+        final isDevToolsEnabled = extensionManager.isExtensionEnabled('dev_tools');
+        if (isDevToolsEnabled) {
+          try {
+            final dynamic elementEval = await controller.evaluateJavascript(source: DevToolsService.getElementInfoScript);
+            if (elementEval != null) {
+              final elementMap = Map<String, dynamic>.from(elementEval as Map);
+              final info = SelectedElementInfo.fromMap(elementMap);
+              if (mounted) {
+                context.read<DevToolsController>().setSelectedElement(info);
+              }
+              if (finalUrl.isEmpty) {
+                finalUrl = info.href ?? info.src ?? widget.tab.url;
+                finalTitle = '<${info.tagName}>';
+              }
+            }
+          } catch (e) {
+            print("Error retrieving element for DevTools: $e");
+          }
+        }
+
         // If still no valid URL, ignore
-        if (finalUrl.isEmpty) {
+        if (finalUrl.isEmpty && !isDevToolsEnabled) {
           print("[CONTEXT MENU DEBUG] No valid URL detected. Skipping menu.");
           return;
         }
@@ -297,7 +321,14 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
       },
       onLoadStart: (controller, url) async {
         final tabManager = context.read<TabManager>();
-        tabManager.updateTab(widget.tab.id, url: url.toString());
+        final canGoBack = await controller.canGoBack();
+        final canGoForward = await controller.canGoForward();
+        tabManager.updateTab(
+          widget.tab.id,
+          url: url.toString(),
+          canGoBack: canGoBack,
+          canGoForward: canGoForward,
+        );
         await widget.scriptEngine.onPageStart(controller, url);
       },
       onLoadStop: (controller, url) async {
@@ -305,9 +336,31 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
         final dataManager = context.read<BrowserDataManager>();
         
         final title = await controller.getTitle() ?? "New Tab";
-        tabManager.updateTab(widget.tab.id, url: url.toString(), progress: 1.0, title: title);
+        final canGoBack = await controller.canGoBack();
+        final canGoForward = await controller.canGoForward();
+        
+        tabManager.updateTab(
+          widget.tab.id,
+          url: url.toString(),
+          progress: 1.0,
+          title: title,
+          canGoBack: canGoBack,
+          canGoForward: canGoForward,
+        );
         if (!widget.tab.isIncognito) {
           dataManager.addHistory(url.toString(), title);
+        }
+        
+        // Restore scroll position if saved
+        if (widget.tab.scrollX != null && widget.tab.scrollY != null) {
+          try {
+            await controller.scrollTo(
+              x: widget.tab.scrollX!.toInt(),
+              y: widget.tab.scrollY!.toInt(),
+            );
+          } catch (e) {
+            print("Error restoring scroll position: $e");
+          }
         }
         
         await widget.scriptEngine.onPageFinished(controller, url);
@@ -318,8 +371,24 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
       },
       onUpdateVisitedHistory: (controller, url, isReload) async {
         final tabManager = context.read<TabManager>();
-        tabManager.updateTab(widget.tab.id, url: url.toString());
+        final canGoBack = await controller.canGoBack();
+        final canGoForward = await controller.canGoForward();
+        tabManager.updateTab(
+          widget.tab.id,
+          url: url.toString(),
+          canGoBack: canGoBack,
+          canGoForward: canGoForward,
+        );
         await widget.scriptEngine.onUrlChanged(controller, url);
+      },
+      onScrollChanged: (controller, x, y) {
+        if (!widget.tab.isIncognito) {
+          context.read<TabManager>().updateTabScroll(
+            widget.tab.id,
+            x.toDouble(),
+            y.toDouble(),
+          );
+        }
       },
       onDownloadStartRequest: (controller, downloadRequest) async {
         final dataManager = context.read<BrowserDataManager>();
@@ -336,14 +405,65 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
           ),
         );
       },
+      onLoadResource: (controller, resource) {
+        if (context.read<ExtensionManager>().isExtensionEnabled('dev_tools')) {
+          final type = resource.initiatorType ?? 'other';
+          context.read<DevToolsController>().addNetworkLog(
+            resource.url?.toString() ?? '',
+            'GET',
+            type,
+            statusCode: 200,
+          );
+        }
+      },
       onReceivedError: (controller, request, error) {
         print("WebView Error: ${error.description}");
+        if (context.read<ExtensionManager>().isExtensionEnabled('dev_tools')) {
+          context.read<DevToolsController>().addConsoleLog(
+            "WebView Error: ${error.description}",
+            ConsoleLogType.error,
+          );
+          context.read<DevToolsController>().addNetworkLog(
+            request.url.toString(),
+            request.method ?? 'GET',
+            'document',
+            statusCode: 0,
+          );
+        }
       },
       onReceivedHttpError: (controller, request, errorResponse) {
         print("HTTP Error: ${errorResponse.statusCode}");
+        if (context.read<ExtensionManager>().isExtensionEnabled('dev_tools')) {
+          context.read<DevToolsController>().addConsoleLog(
+            "HTTP Error ${errorResponse.statusCode} on ${request.url}",
+            ConsoleLogType.error,
+          );
+          context.read<DevToolsController>().addNetworkLog(
+            request.url.toString(),
+            request.method ?? 'GET',
+            'document',
+            statusCode: errorResponse.statusCode,
+          );
+        }
       },
       onConsoleMessage: (controller, consoleMessage) {
         print("Console: ${consoleMessage.message}");
+        if (context.read<ExtensionManager>().isExtensionEnabled('dev_tools')) {
+          ConsoleLogType logType = ConsoleLogType.log;
+          if (consoleMessage.messageLevel == ConsoleMessageLevel.ERROR) {
+            logType = ConsoleLogType.error;
+          } else if (consoleMessage.messageLevel == ConsoleMessageLevel.WARNING) {
+            logType = ConsoleLogType.warn;
+          } else if (consoleMessage.messageLevel == ConsoleMessageLevel.LOG) {
+            logType = ConsoleLogType.log;
+          } else if (consoleMessage.messageLevel == ConsoleMessageLevel.TIP) {
+            logType = ConsoleLogType.info;
+          }
+          context.read<DevToolsController>().addConsoleLog(
+            consoleMessage.message,
+            logType,
+          );
+        }
       },
       onTitleChanged: (controller, title) {
         final tabManager = context.read<TabManager>();
