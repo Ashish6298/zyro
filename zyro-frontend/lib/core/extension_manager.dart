@@ -18,7 +18,6 @@ class ExtensionManager extends ChangeNotifier {
   Future<void> _init() async {
     final savedStates = await ExtensionStorageService.loadExtensionStates();
 
-    // Default built-in extensions definitions
     final List<ExtensionModel> defaults = [
       ExtensionModel(
         id: 'ad_blocker_downloader',
@@ -37,6 +36,13 @@ class ExtensionManager extends ChangeNotifier {
         description: 'Developer tools including element inspector, console, network logging, and storage explorer.',
         version: '1.0.0',
         icon: LucideIcons.code,
+      ),
+      ExtensionModel(
+        id: 'background_player',
+        name: 'Background Player',
+        description: 'Enables background media playback with system notification controls.',
+        version: '1.0.0',
+        icon: LucideIcons.playCircle,
       ),
       ExtensionModel(
         id: 'dark_mode',

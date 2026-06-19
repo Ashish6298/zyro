@@ -17,6 +17,7 @@ import '../features/video_downloader/services/video_detection_service.dart';
 import '../features/extensions/dev_tools/dev_tools_controller.dart';
 import '../features/extensions/dev_tools/dev_tools_service.dart';
 import '../features/extensions/dev_tools/dev_tools_models.dart';
+import '../features/extensions/background_player/background_player_service.dart';
 
 class WebViewWrapper extends StatefulWidget {
   final TabModel tab;
@@ -36,6 +37,12 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
   bool _lastDownloaderState = false;
 
   @override
+  void dispose() {
+    BackgroundPlayerService.handleTabClosed(widget.tab.id);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final extensionManager = context.watch<ExtensionManager>();
     final isAdBlockerEnabled = extensionManager.isExtensionEnabled('ad_blocker_downloader');
@@ -50,6 +57,18 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
       widget.tab.controller?.evaluateJavascript(source: widget.scriptEngine.videoDownloaderScript);
     }
     _lastDownloaderState = isVideoDownloaderEnabled;
+
+    final isBgPlayerEnabled = extensionManager.isExtensionEnabled('background_player');
+    BackgroundPlayerService.isEnabled = isBgPlayerEnabled;
+    if (!isBgPlayerEnabled) {
+      BackgroundPlayerService.handleExtensionDisabled();
+    }
+    final tabManager = context.watch<TabManager>();
+    final isActiveTab = tabManager.currentTab?.id == widget.tab.id;
+    if (isActiveTab && isBgPlayerEnabled && widget.tab.controller != null) {
+      BackgroundPlayerService.setActiveController(widget.tab.id, widget.tab.controller);
+      BackgroundPlayerService.injectMediaDetector(widget.tab.controller!);
+    }
 
     return InAppWebView(
       initialUrlRequest: URLRequest(url: WebUri(widget.tab.url)),
@@ -78,6 +97,20 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
                 window.lastTouchY = e.clientY;
               }
             }, true);
+
+            // Override visibility APIs to prevent pausing in background
+            try {
+              Object.defineProperty(document, 'hidden', { value: false, writable: false });
+              Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: false });
+              Object.defineProperty(document, 'webkitHidden', { value: false, writable: false });
+            } catch(e) {}
+            
+            document.addEventListener('visibilitychange', function(e) {
+              e.stopImmediatePropagation();
+            }, true);
+            document.addEventListener('webkitvisibilitychange', function(e) {
+              e.stopImmediatePropagation();
+            }, true);
           """,
           injectionTime: UserScriptInjectionTime.AT_DOCUMENT_START,
         ),
@@ -98,6 +131,10 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
         incognito: widget.tab.isIncognito,
         cacheEnabled: !widget.tab.isIncognito,
         clearSessionCache: widget.tab.isIncognito,
+        mediaPlaybackRequiresUserGesture: false,
+        allowsInlineMediaPlayback: true,
+        domStorageEnabled: true,
+        allowBackgroundAudioPlaying: true,
         contentBlockers: isAdBlockerEnabled ? [
           ContentBlocker(
             trigger: ContentBlockerTrigger(urlFilter: ".*googleadservices.*"),
@@ -287,6 +324,12 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
       onWebViewCreated: (controller) {
         widget.tab.controller = controller;
         
+        final tabManager = context.read<TabManager>();
+        final isBgPlayerEnabled = context.read<ExtensionManager>().isExtensionEnabled('background_player');
+        if (isBgPlayerEnabled && tabManager.currentTab?.id == widget.tab.id) {
+          BackgroundPlayerService.setActiveController(widget.tab.id, controller);
+        }
+        
         // Register JavaScript handler for video downloader
         controller.addJavaScriptHandler(
           handlerName: 'triggerDownload',
@@ -363,6 +406,11 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
           }
         }
         
+        final isBgPlayerEnabled = context.read<ExtensionManager>().isExtensionEnabled('background_player');
+        if (isBgPlayerEnabled) {
+          await BackgroundPlayerService.injectMediaDetector(controller);
+        }
+        
         await widget.scriptEngine.onPageFinished(controller, url);
       },
       onProgressChanged: (controller, progress) {
@@ -417,14 +465,70 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
         }
       },
       onReceivedError: (controller, request, error) {
-        print("WebView Error: ${error.description}");
+        final isMainFrame = request.isForMainFrame ?? false;
+        final url = request.url.toString();
+
+        if (!isMainFrame) {
+          assert(() {
+            print("Subresource error filtered: $url - ${error.description}");
+            return true;
+          }());
+          return;
+        }
+
+        print("WebView Error (Main Frame): ${error.description}");
+        
+        if (error.description.contains("ERR_NAME_NOT_RESOLVED") || error.description.contains("ERR_CONNECTION_REFUSED")) {
+          controller.loadData(data: """
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Network Error</title>
+                <style>
+                  body {
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                    background-color: #0b0f19;
+                    color: #ffffff;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100vh;
+                    margin: 0;
+                    text-align: center;
+                  }
+                  h1 { color: #ff5252; font-size: 24px; margin-bottom: 8px; }
+                  p { color: #a0aec0; font-size: 16px; max-width: 80%; margin-top: 0; }
+                  .btn {
+                    margin-top: 16px;
+                    padding: 10px 20px;
+                    background-color: #4f46e5;
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    font-weight: bold;
+                    cursor: pointer;
+                  }
+                </style>
+              </head>
+              <body>
+                <h1>Network Error</h1>
+                <p>We couldn't resolve the website address. Please check your network connection and try again.</p>
+                <button class="btn" onclick="window.location.reload()">Reload</button>
+              </body>
+            </html>
+          """);
+        }
+
         if (context.read<ExtensionManager>().isExtensionEnabled('dev_tools')) {
           context.read<DevToolsController>().addConsoleLog(
             "WebView Error: ${error.description}",
             ConsoleLogType.error,
           );
           context.read<DevToolsController>().addNetworkLog(
-            request.url.toString(),
+            url,
             request.method ?? 'GET',
             'document',
             statusCode: 0,
@@ -432,6 +536,9 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
         }
       },
       onReceivedHttpError: (controller, request, errorResponse) {
+        final isMainFrame = request.isForMainFrame ?? false;
+        if (!isMainFrame) return;
+
         print("HTTP Error: ${errorResponse.statusCode}");
         if (context.read<ExtensionManager>().isExtensionEnabled('dev_tools')) {
           context.read<DevToolsController>().addConsoleLog(
@@ -447,7 +554,16 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
         }
       },
       onConsoleMessage: (controller, consoleMessage) {
-        print("Console: ${consoleMessage.message}");
+        final msg = consoleMessage.message;
+        if (msg.contains("generate_204") || msg.contains("preloaded but not used")) {
+          assert(() {
+            print("Console Warning (Filtered): $msg");
+            return true;
+          }());
+          return;
+        }
+
+        print("Console: $msg");
         if (context.read<ExtensionManager>().isExtensionEnabled('dev_tools')) {
           ConsoleLogType logType = ConsoleLogType.log;
           if (consoleMessage.messageLevel == ConsoleMessageLevel.ERROR) {
@@ -460,7 +576,7 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
             logType = ConsoleLogType.info;
           }
           context.read<DevToolsController>().addConsoleLog(
-            consoleMessage.message,
+            msg,
             logType,
           );
         }

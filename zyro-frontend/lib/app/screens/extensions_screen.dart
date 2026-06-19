@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../core/extension_manager.dart';
 import '../../core/models/extension_model.dart';
+import '../../features/extensions/widgets/extension_overview_dialog.dart';
 
 class ExtensionsScreen extends StatefulWidget {
   const ExtensionsScreen({super.key});
@@ -277,7 +278,15 @@ class _ExtensionCardState extends State<ExtensionCard> {
       onTapDown: widget.isInstalled ? null : (_) => setState(() => _scale = 0.98),
       onTapUp: widget.isInstalled ? null : (_) {
         setState(() => _scale = 1.0);
-        widget.manager.installExtension(extension);
+        showDialog(
+          context: context,
+          builder: (context) => ExtensionOverviewDialog(
+            extension: extension,
+            onConfirm: () {
+              widget.manager.installExtension(extension);
+            },
+          ),
+        );
       },
       onTapCancel: widget.isInstalled ? null : () => setState(() => _scale = 1.0),
       child: AnimatedScale(

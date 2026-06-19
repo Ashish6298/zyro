@@ -2,7 +2,9 @@ package com.example.zyro
 
 import android.app.DownloadManager
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -24,6 +26,81 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        val backgroundPlayerChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "zyro/background_player")
+        backgroundPlayerChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "startService" -> {
+                    val title = call.argument<String>("title") ?: "Playing in Zyro Browser"
+                    val website = call.argument<String>("website") ?: "Zyro Browser"
+                    val isPlaying = call.argument<Boolean>("isPlaying") ?: false
+                    val positionMs = call.argument<Number>("positionMs")?.toLong() ?: 0L
+                    val durationMs = call.argument<Number>("durationMs")?.toLong() ?: 0L
+                    val nextTitle = call.argument<String>("nextTitle") ?: ""
+                    
+                    val intent = Intent(this, BackgroundPlayerService::class.java).apply {
+                        putExtra("title", title)
+                        putExtra("website", website)
+                        putExtra("isPlaying", isPlaying)
+                        putExtra("positionMs", positionMs)
+                        putExtra("durationMs", durationMs)
+                        putExtra("nextTitle", nextTitle)
+                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        startForegroundService(intent)
+                    } else {
+                        startService(intent)
+                    }
+                    result.success(null)
+                }
+                "updateState" -> {
+                    if (BackgroundPlayerService.isServiceRunning) {
+                        val title = call.argument<String>("title")
+                        val website = call.argument<String>("website")
+                        val isPlaying = call.argument<Boolean>("isPlaying") ?: false
+                        val positionMs = call.argument<Number>("positionMs")?.toLong() ?: 0L
+                        val durationMs = call.argument<Number>("durationMs")?.toLong() ?: 0L
+                        val nextTitle = call.argument<String>("nextTitle") ?: ""
+                        
+                        val intent = Intent(this, BackgroundPlayerService::class.java).apply {
+                            if (title != null) putExtra("title", title)
+                            if (website != null) putExtra("website", website)
+                            putExtra("isPlaying", isPlaying)
+                            putExtra("positionMs", positionMs)
+                            putExtra("durationMs", durationMs)
+                            putExtra("nextTitle", nextTitle)
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(intent)
+                        } else {
+                            startService(intent)
+                        }
+                    }
+                    result.success(null)
+                }
+                "stopService" -> {
+                    val intent = Intent(this, BackgroundPlayerService::class.java).apply {
+                        action = "STOP"
+                    }
+                    startService(intent)
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        BackgroundPlayerService.onMediaAction = { action ->
+            runOnUiThread {
+                if (action.startsWith("seekTo:")) {
+                    val posMs = action.substringAfter("seekTo:").toLongOrNull()
+                    if (posMs != null) {
+                        backgroundPlayerChannel.invokeMethod("seekTo", mapOf("positionMs" to posMs))
+                    }
+                } else {
+                    backgroundPlayerChannel.invokeMethod(action, null)
+                }
+            }
+        }
     }
 
     private fun enqueueDownload(call: MethodCall, result: MethodChannel.Result) {

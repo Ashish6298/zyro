@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import 'models/tab_model.dart';
 import 'globals.dart';
 import 'services/tab_session_storage_service.dart';
+import '../features/extensions/background_player/background_player_service.dart';
 
 class RecentlyClosedTab {
   final TabModel tab;
@@ -71,6 +72,10 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
         state == AppLifecycleState.detached) {
       print("[TAB LIFECYCLE LOG] App state changed to $state. Saving session...");
       saveSession();
+      BackgroundPlayerService.handleAppMinimized(BackgroundPlayerService.isEnabled);
+    } else if (state == AppLifecycleState.resumed) {
+      print("[TAB LIFECYCLE LOG] App state changed to $state.");
+      BackgroundPlayerService.handleAppResumed();
     }
   }
 

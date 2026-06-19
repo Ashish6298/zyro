@@ -10,8 +10,11 @@ import 'features/splash/screens/splash_screen.dart';
 import 'features/video_downloader/controllers/download_controller.dart';
 import 'features/extensions/dev_tools/dev_tools_controller.dart';
 
+import 'features/extensions/background_player/background_player_service.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  BackgroundPlayerService.initializeChannelHandler();
   runApp(
     MultiProvider(
       providers: [

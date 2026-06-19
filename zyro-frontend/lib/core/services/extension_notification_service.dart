@@ -10,6 +10,8 @@ class ExtensionNotificationService {
         message = 'Dev Tools enabled — Inspect option is now available in the context menu.';
       } else if (id == 'ad_blocker_downloader') {
         message = 'Ad Blocker & Downloader enabled — ads will be blocked and video tools are available.';
+      } else if (id == 'background_player') {
+        message = 'Background Player enabled — media can continue playing when Zyro is minimized.';
       } else if (id == 'dark_mode') {
         message = 'Dark Reader enabled — High-contrast dark mode applied to websites.';
       } else if (id == 'password_gen') {
@@ -22,6 +24,8 @@ class ExtensionNotificationService {
         message = 'Dev Tools disabled — Inspect option has been removed from the context menu.';
       } else if (id == 'ad_blocker_downloader') {
         message = 'Ad Blocker & Downloader disabled — ads and video tools are inactive.';
+      } else if (id == 'background_player') {
+        message = 'Background Player disabled — media will stop or pause normally when the app is minimized.';
       } else if (id == 'dark_mode') {
         message = 'Dark Reader disabled — Standard website theme restored.';
       } else if (id == 'password_gen') {
