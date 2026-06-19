@@ -1,6 +1,6 @@
 class AppAssets {
   // Splash highlights details
-  static const String appName = 'ZYRO';
+  static const String appName = 'Zyro Browser';
   static const String appTagline = 'Browse smarter. Block ads. Download faster.';
   
   static const List<Map<String, String>> features = [

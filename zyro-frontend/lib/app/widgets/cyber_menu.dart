@@ -51,10 +51,11 @@ class CyberMenu extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(
-                          LucideIcons.compass,
-                          color: theme.colorScheme.primary,
-                          size: 18,
+                        Image.asset(
+                          'assets/logo.png',
+                          width: 18,
+                          height: 18,
+                          fit: BoxFit.contain,
                         ),
                         const SizedBox(width: 8),
                         Text(

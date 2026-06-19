@@ -73,7 +73,19 @@ class SettingsScreen extends StatelessWidget {
           
           _buildSectionHeader(theme, 'ABOUT'),
           SettingTile(
-            icon: LucideIcons.info,
+            customLeading: Container(
+              width: 40,
+              height: 40,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withOpacity(0.06),
+                shape: BoxShape.circle,
+              ),
+              child: Image.asset(
+                'assets/logo.png',
+                fit: BoxFit.contain,
+              ),
+            ),
             title: 'Zyro Browser',
             subtitle: 'Version 1.0.0',
             onTap: null,
@@ -246,14 +258,16 @@ class _ThemeModeCardState extends State<ThemeModeCard> {
 }
 
 class SettingTile extends StatefulWidget {
-  final IconData icon;
+  final IconData? icon;
+  final Widget? customLeading;
   final String title;
   final String? subtitle;
   final VoidCallback? onTap;
 
   const SettingTile({
     super.key,
-    required this.icon,
+    this.icon,
+    this.customLeading,
     required this.title,
     this.subtitle,
     this.onTap,
@@ -302,18 +316,21 @@ class _SettingTileState extends State<SettingTile> {
           ),
           child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.06),
-                  shape: BoxShape.circle,
+              if (widget.customLeading != null)
+                widget.customLeading!
+              else if (widget.icon != null)
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withOpacity(0.06),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    widget.icon!,
+                    color: theme.colorScheme.primary,
+                    size: 20,
+                  ),
                 ),
-                child: Icon(
-                  widget.icon,
-                  color: theme.colorScheme.primary,
-                  size: 20,
-                ),
-              ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
