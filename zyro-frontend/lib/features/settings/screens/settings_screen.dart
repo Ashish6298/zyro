@@ -4,7 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../../core/browser_data_manager.dart';
 import '../../../core/theme/theme_controller.dart';
-import '../../../core/theme/app_colors.dart';
+import 'developer_info_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -12,7 +12,6 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final themeController = Provider.of<ThemeController>(context);
 
     return Scaffold(
@@ -78,6 +77,17 @@ class SettingsScreen extends StatelessWidget {
             title: 'Zyro Browser',
             subtitle: 'Version 1.0.0',
             onTap: null,
+          ),
+          SettingTile(
+            icon: LucideIcons.user,
+            title: 'Developer Details',
+            // subtitle: 'Developer details',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const DeveloperInfoScreen()),
+              );
+            },
           ),
         ],
       ),
