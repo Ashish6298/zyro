@@ -37,6 +37,10 @@ class BackgroundPlayerService : Service() {
     private var currentPositionMs: Long = 0L
     private var currentDurationMs: Long = 0L
     private var currentNextTitle: String = ""
+    private var isForeground = false
+    private var lastTitle: String? = null
+    private var lastWebsite: String? = null
+    private var lastDuration: Long? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -173,12 +177,14 @@ class BackgroundPlayerService : Service() {
             android.util.Log.d("BackgroundPlayer", "stop confirmed: removing notification and service")
             onMediaAction?.invoke("pause")
             stopForeground(true)
+            isForeground = false
             stopSelf()
             android.util.Log.d("BackgroundPlayer", "notification removed")
             return START_NOT_STICKY
         } else if (action == "STOP") {
             android.util.Log.d("BackgroundPlayer", "stop service requested: removing notification and service")
             stopForeground(true)
+            isForeground = false
             stopSelf()
             android.util.Log.d("BackgroundPlayer", "notification removed")
             return START_NOT_STICKY
@@ -256,14 +262,19 @@ class BackgroundPlayerService : Service() {
             )
         mediaSession.setPlaybackState(stateBuilder.build())
 
-        // Update MediaSession metadata
-        val metadataBuilder = MediaMetadata.Builder()
-            .putString(MediaMetadata.METADATA_KEY_TITLE, currentTitle)
-            .putString(MediaMetadata.METADATA_KEY_ARTIST, subtitle)
-        if (currentDurationMs > 0) {
-            metadataBuilder.putLong(MediaMetadata.METADATA_KEY_DURATION, currentDurationMs)
+        // Update MediaSession metadata only if it changed
+        if (currentTitle != lastTitle || currentWebsite != lastWebsite || currentDurationMs != lastDuration) {
+            val metadataBuilder = MediaMetadata.Builder()
+                .putString(MediaMetadata.METADATA_KEY_TITLE, currentTitle)
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, currentWebsite)
+            if (currentDurationMs > 0) {
+                metadataBuilder.putLong(MediaMetadata.METADATA_KEY_DURATION, currentDurationMs)
+            }
+            mediaSession.setMetadata(metadataBuilder.build())
+            lastTitle = currentTitle
+            lastWebsite = currentWebsite
+            lastDuration = currentDurationMs
         }
-        mediaSession.setMetadata(metadataBuilder.build())
 
         // Build notification
         val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -346,10 +357,17 @@ class BackgroundPlayerService : Service() {
 
         builder.setStyle(mediaStyle)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, builder.build(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+        val notification = builder.build()
+        if (!isForeground) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+            isForeground = true
         } else {
-            startForeground(NOTIFICATION_ID, builder.build())
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.notify(NOTIFICATION_ID, notification)
         }
     }
 
@@ -385,6 +403,10 @@ class BackgroundPlayerService : Service() {
 
     override fun onDestroy() {
         isServiceRunning = false
+        isForeground = false
+        lastTitle = null
+        lastWebsite = null
+        lastDuration = null
         instance = null
         mediaSession?.apply {
             isActive = false
