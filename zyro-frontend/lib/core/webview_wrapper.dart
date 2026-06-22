@@ -18,6 +18,8 @@ import '../features/extensions/dev_tools/dev_tools_controller.dart';
 import '../features/extensions/dev_tools/dev_tools_service.dart';
 import '../features/extensions/dev_tools/dev_tools_models.dart';
 import '../features/extensions/background_player/background_player_service.dart';
+import '../features/extensions/ad_blocker/services/ad_block_service.dart';
+import '../features/extensions/ad_blocker/services/ad_block_stats_service.dart';
 
 class WebViewWrapper extends StatefulWidget {
   final TabModel tab;
@@ -154,6 +156,18 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
           ),
         ] : [],
       ),
+      shouldInterceptRequest: (controller, request) async {
+        final adBlockStatsService = Provider.of<AdBlockStatsService>(context, listen: false);
+        final adBlockService = AdBlockService(
+          statsService: adBlockStatsService,
+          extensionManager: Provider.of<ExtensionManager>(context, listen: false),
+        );
+        return await adBlockService.interceptRequest(
+          url: request.url.toString(),
+          requestType: request.isForMainFrame == true ? 'document' : 'subresource',
+          sourceUrl: widget.tab.url,
+        );
+      },
       shouldOverrideUrlLoading: (controller, navigationAction) async {
         return NavigationActionPolicy.ALLOW;
       },

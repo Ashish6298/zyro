@@ -9,6 +9,7 @@ import 'core/theme/app_theme.dart';
 import 'features/splash/screens/splash_screen.dart';
 import 'features/video_downloader/controllers/download_controller.dart';
 import 'features/extensions/dev_tools/dev_tools_controller.dart';
+import 'features/extensions/ad_blocker/services/ad_block_stats_service.dart';
 
 import 'features/extensions/background_player/background_player_service.dart';
 
@@ -24,6 +25,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => ExtensionManager()),
         ChangeNotifierProvider(create: (_) => DownloadController()),
         ChangeNotifierProvider(create: (_) => DevToolsController()),
+        ChangeNotifierProvider(create: (_) => AdBlockStatsService()),
       ],
       child: const ZyroApp(),
     ),

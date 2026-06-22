@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/browser_data_manager.dart';
 import '../../../core/theme/theme_controller.dart';
 import 'developer_info_screen.dart';
+import '../../extensions/ad_blocker/widgets/ad_block_settings_stats_widget.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -69,6 +70,9 @@ class SettingsScreen extends StatelessWidget {
               _showDone(context);
             },
           ),
+          const SizedBox(height: 24),
+
+          const AdBlockSettingsStatsWidget(),
           const SizedBox(height: 24),
           
           _buildSectionHeader(theme, 'ABOUT'),
