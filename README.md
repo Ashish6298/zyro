@@ -45,10 +45,13 @@ A sandboxed extension ecosystem built for security, customization, and real-time
 
 * Dynamic Extension Registry
 * Script Injection Framework
-* Network-Level Content Filters
-* Built-In Ad Blocker
-* Tracker & Popup Protection
-* CSS/JS Page Cleanup
+* Multi-Layer Request Interceptor Ad Blocker
+* AdBlock Analytics Dashboard
+* YouTube Ad & Overlay Cleaner
+* Tracker & Beacons Protection
+* CSS/JS Cosmetic Cleanups
+* System-Level Background Audio Playback
+* Lock Screen & Media Controls Integration
 * Floating Download HUD
 * Real-Time Stream Detection
 
@@ -83,6 +86,7 @@ A dedicated Node.js media backend responsible for extraction, transcoding, and f
 | Capability               | Description                                                               |
 | ------------------------ | ------------------------------------------------------------------------- |
 | 🎨 Cyber-Bento Design    | Premium futuristic interface inspired by modern operating systems         |
+| 🎵 Background Play      | Uninterrupted audio playback in the background with lock screen controls and system-level notifications |
 | 🛡️ Native Ad Blocking   | Blocks ads, trackers, and intrusive scripts directly inside the WebView   |
 | 🎬 Smart Video Detection | Detects playable media streams and exposes download options automatically |
 | ⚡ High Performance       | Flutter frontend paired with a lightweight Node.js backend                |
@@ -187,6 +191,10 @@ zyro/
 | `WebViewWrapper`       | WebView configuration and JS bridge integration |
 | `ExtensionManager`     | Ad-blocking and extension execution             |
 | `BrowserDataManager`   | History, bookmarks, downloads persistence       |
+| `AdBlockService`       | Coordinates request interception and blocker injection |
+| `AdBlockStatsService`  | Manages persistent analytics for blocked trackers |
+| `AdBlockRuleEngine`    | Fast URL regex rules matching for ads/telemetry |
+| `BackgroundPlayerService` | Native Android foreground service for background media controls |
 | `DownloadQueueService` | Media extraction and processing workflow        |
 | `FileManagerService`   | File creation, cleanup, and storage management  |
 
