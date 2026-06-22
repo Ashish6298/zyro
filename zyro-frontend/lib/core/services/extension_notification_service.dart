@@ -16,6 +16,8 @@ class ExtensionNotificationService {
         message = 'Dark Reader enabled — High-contrast dark mode applied to websites.';
       } else if (id == 'password_gen') {
         message = 'KeyGen enabled — Password manager and generator is active.';
+      } else if (id == 'floating_videos') {
+        message = 'Floating Videos enabled — videos can now play in a movable mini-player.';
       } else {
         message = '$name enabled.';
       }
@@ -30,6 +32,8 @@ class ExtensionNotificationService {
         message = 'Dark Reader disabled — Standard website theme restored.';
       } else if (id == 'password_gen') {
         message = 'KeyGen disabled — Password manager is inactive.';
+      } else if (id == 'floating_videos') {
+        message = 'Floating Videos disabled — floating mini-player has been turned off.';
       } else {
         message = '$name disabled.';
       }

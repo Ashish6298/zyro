@@ -4,3 +4,6 @@ import 'package:flutter/material.dart';
 /// to show SnackBar notifications without needing a BuildContext.
 final GlobalKey<ScaffoldMessengerState> globalScaffoldKey =
     GlobalKey<ScaffoldMessengerState>();
+
+final GlobalKey<NavigatorState> navigatorKey =
+    GlobalKey<NavigatorState>();

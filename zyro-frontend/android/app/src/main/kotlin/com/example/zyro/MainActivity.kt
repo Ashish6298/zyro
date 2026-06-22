@@ -14,9 +14,16 @@ import java.io.File
 
 class MainActivity : FlutterActivity() {
     private val channelName = "zyro/downloads"
+    
+    // Dedicated Floating Videos PiP manager
+    private lateinit var pipManager: FloatingVideoPipManager
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // Initialize PipManager
+        pipManager = FloatingVideoPipManager(this)
+        LogSingle.d("MainActivity", "channel registered: zyro/floating_video")
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
@@ -99,6 +106,33 @@ class MainActivity : FlutterActivity() {
                 } else {
                     backgroundPlayerChannel.invokeMethod(action, null)
                 }
+            }
+        }
+
+        // Register Floating Videos MethodChannel
+        val floatingVideoChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, FloatingVideoChannelHandler.CHANNEL_NAME)
+        floatingVideoChannel.setMethodCallHandler(FloatingVideoChannelHandler(pipManager))
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        android.util.Log.d("FloatingVideo", "onUserLeaveHint called")
+        if (::pipManager.isInitialized) {
+            pipManager.enterPipIfPossible()
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode)
+        android.util.Log.d("FloatingVideo", "onPictureInPictureModeChanged: isInPictureInPictureMode = $isInPictureInPictureMode")
+        runOnUiThread {
+            val channel = MethodChannel(flutterEngine?.dartExecutor?.binaryMessenger ?: return@runOnUiThread, FloatingVideoChannelHandler.CHANNEL_NAME)
+            if (isInPictureInPictureMode) {
+                android.util.Log.d("FloatingVideo", "PiP entered successfully")
+                channel.invokeMethod("onPipEntered", null)
+            } else {
+                android.util.Log.d("FloatingVideo", "PiP exited")
+                channel.invokeMethod("onPipExited", null)
             }
         }
     }
@@ -210,5 +244,12 @@ class MainActivity : FlutterActivity() {
         if (localUri.isNullOrBlank()) return null
         val parsed = Uri.parse(localUri)
         return if (parsed.scheme == "file") parsed.path else localUri
+    }
+}
+
+// Simple Log helper object to avoid compilation issue with LogSingle
+object LogSingle {
+    fun d(tag: String, msg: String) {
+        android.util.Log.d(tag, msg)
     }
 }

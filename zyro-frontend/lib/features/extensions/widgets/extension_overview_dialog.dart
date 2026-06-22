@@ -77,6 +77,19 @@ class ExtensionOverviewDetails {
       permissionsSummary: 'Requires clipboard access to paste generated passwords.',
       privacyNotes: 'Passwords are generated strictly in local memory and are never saved or uploaded.',
     ),
+    'floating_videos': ExtensionOverviewDetails(
+      description: 'Floating Videos lets you keep videos playing in a movable mini-player while browsing.',
+      features: [
+        'Mini-player resize capability (pinch or drag edges)',
+        'Adjustable opacity / transparency slider',
+        'Speed control presets (0.5x, 1x, 1.25x, 1.5x, 2x, 3x)',
+        'Play/Pause & Dismiss gestures',
+        'Automatic Picture-in-Picture on app minimize'
+      ],
+      benefits: 'Enables multi-tasking and watching video content while reading articles or checking other tabs.',
+      permissionsSummary: 'Requires page content access to detect active video players and system overlays.',
+      privacyNotes: 'This extension detects active video elements on webpages only while enabled and does not collect personal browsing data.',
+    ),
   };
 }
 

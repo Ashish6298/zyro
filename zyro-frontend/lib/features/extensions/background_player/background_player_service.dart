@@ -1,6 +1,10 @@
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'platform/background_player_channel.dart';
+import '../../../core/extension_manager.dart';
+import '../../../core/globals.dart';
+import '../floating_videos/floating_videos_controller.dart';
 
 class BackgroundPlayerService {
   static InAppWebViewController? _activeController;
@@ -266,6 +270,38 @@ class BackgroundPlayerService {
     isEnabled = enabled;
     _isBackground = true;
     print("[BACKGROUND PLAYER] handleAppMinimized. isEnabled: $isEnabled, isPlaying: $isPlaying");
+    
+    // Check if Floating Videos is handling PiP
+    bool isPipHandling = false;
+    try {
+      final ctx = navigatorKey.currentContext;
+      if (ctx != null) {
+        final extMgr = Provider.of<ExtensionManager>(ctx, listen: false);
+        final isFloatingEnabled = extMgr.isExtensionEnabled('floating_videos');
+        if (isFloatingEnabled) {
+          final floatCtrl = Provider.of<FloatingVideosController>(ctx, listen: false);
+          final activeVideo = floatCtrl.activeVideo;
+          if (activeVideo != null && activeVideo.isPlaying && !activeVideo.isAd && activeVideo.duration > 0 && activeVideo.isVisible) {
+            isPipHandling = true;
+            print("[FLOATING VIDEO DEBUG] Background Player did not block PiP. WebView pause skipped for PiP.");
+          }
+        }
+      }
+    } catch (e) {
+      print("Error checking FloatingVideos in BackgroundPlayerService: $e");
+    }
+
+    if (isPipHandling) {
+      // WebView pause is skipped. Keep controls active if Background Player is enabled.
+      if (isEnabled) {
+        print("[BACKGROUND PLAYER] Keeping notification controls active during PiP.");
+      } else {
+        BackgroundPlayerChannel.stopService();
+        _serviceStarted = false;
+      }
+      return;
+    }
+
     if (!isEnabled) {
       BackgroundPlayerChannel.stopService();
       _serviceStarted = false;

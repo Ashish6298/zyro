@@ -58,6 +58,13 @@ class ExtensionManager extends ChangeNotifier {
         version: '0.9.5',
         icon: LucideIcons.key,
       ),
+      ExtensionModel(
+        id: 'floating_videos',
+        name: 'Floating Videos',
+        description: 'Lets you keep videos playing in a movable mini-player while browsing.',
+        version: '1.0.0',
+        icon: LucideIcons.screenShare,
+      ),
     ];
 
     if (savedStates.isEmpty) {

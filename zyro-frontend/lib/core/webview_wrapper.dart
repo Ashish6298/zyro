@@ -20,6 +20,10 @@ import '../features/extensions/dev_tools/dev_tools_models.dart';
 import '../features/extensions/background_player/background_player_service.dart';
 import '../features/extensions/ad_blocker/services/ad_block_service.dart';
 import '../features/extensions/ad_blocker/services/ad_block_stats_service.dart';
+import '../features/extensions/floating_videos/floating_video_detector.dart';
+import '../features/extensions/floating_videos/floating_videos_service.dart';
+import '../features/extensions/floating_videos/floating_videos_controller.dart';
+import '../features/extensions/floating_videos/platform/floating_video_channel.dart';
 
 class WebViewWrapper extends StatefulWidget {
   final TabModel tab;
@@ -35,13 +39,142 @@ class WebViewWrapper extends StatefulWidget {
   State<WebViewWrapper> createState() => _WebViewWrapperState();
 }
 
-class _WebViewWrapperState extends State<WebViewWrapper> {
+class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObserver {
   bool _lastDownloaderState = false;
+  bool? _lastFloatingVideoState;
+
+  // Cached providers to avoid looking up deactivated widget ancestors
+  TabManager? _tabManager;
+  ExtensionManager? _extensionManager;
+  BrowserDataManager? _dataManager;
+  FloatingVideosController? _floatingCtrl;
+  DownloadController? _downloadCtrl;
+  DevToolsController? _devToolsCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _tabManager = context.read<TabManager>();
+    _extensionManager = context.read<ExtensionManager>();
+    _dataManager = context.read<BrowserDataManager>();
+    _floatingCtrl = context.read<FloatingVideosController>();
+    _downloadCtrl = context.read<DownloadController>();
+    _devToolsCtrl = context.read<DevToolsController>();
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     BackgroundPlayerService.handleTabClosed(widget.tab.id);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      _checkAndTriggerPiP();
+    }
+  }
+
+  Future<void> _checkAndTriggerPiP() async {
+    if (!mounted) return;
+    final tabManager = _tabManager;
+    final extMgr = _extensionManager;
+    final floatingCtrl = _floatingCtrl;
+    if (tabManager == null || extMgr == null || floatingCtrl == null) return;
+
+    final isActiveTab = tabManager.currentTab?.id == widget.tab.id;
+    if (!isActiveTab) return;
+
+    final isFloatingVideosEnabled = extMgr.isExtensionEnabled('floating_videos');
+    print("[FLOATING VIDEO DEBUG] Floating Videos enabled: $isFloatingVideosEnabled");
+    print("[FLOATING VIDEO DEBUG] app minimizing, checking PiP suitability. enabled: $isFloatingVideosEnabled");
+    
+    if (!isFloatingVideosEnabled) {
+      return;
+    }
+
+    final activeVideo = floatingCtrl.activeVideo;
+    if (activeVideo == null) {
+      print("[FLOATING VIDEO DEBUG] No active video detected.");
+      return;
+    }
+
+    print("[FLOATING VIDEO DEBUG] video detected: Title=${activeVideo.videoTitle}, isPlaying=${activeVideo.isPlaying}, duration=${activeVideo.duration}, isAd=${activeVideo.isAd}, isVisible=${activeVideo.isVisible}, width=${activeVideo.videoWidth}, height=${activeVideo.videoHeight}");
+
+    if (!activeVideo.isPlaying) {
+      print("[FLOATING VIDEO DEBUG] Active video is not playing.");
+      return;
+    }
+
+    if (activeVideo.isAd) {
+      print("[FLOATING VIDEO DEBUG] Active video is an ad.");
+      return;
+    }
+
+    if (activeVideo.duration <= 0) {
+      print("[FLOATING VIDEO DEBUG] Active video duration is not valid (${activeVideo.duration}).");
+      return;
+    }
+
+    if (!activeVideo.isVisible) {
+      print("[FLOATING VIDEO DEBUG] Active video is not visible.");
+      return;
+    }
+
+    // Use cached dimensions if current ones are invalid
+    var pipWidth = activeVideo.videoWidth;
+    var pipHeight = activeVideo.videoHeight;
+    if (pipWidth <= 0 || pipHeight <= 0) {
+      pipWidth = floatingCtrl.lastKnownVideoWidth;
+      pipHeight = floatingCtrl.lastKnownVideoHeight;
+      print("[FLOATING VIDEO DEBUG] Using cached video dimensions: ${pipWidth}x${pipHeight}");
+    }
+    // Fallback to 16:9 if still invalid
+    if (pipWidth <= 0 || pipHeight <= 0) {
+      pipWidth = 1920;
+      pipHeight = 1080;
+      print("[FLOATING VIDEO DEBUG] Ignoring invalid 0x0 dimensions, using 16:9 fallback");
+    }
+
+    final isSupported = await FloatingVideoChannel.isPictureInPictureSupported();
+    if (!mounted) return;
+    print("[FLOATING VIDEO DEBUG] PiP support available: $isSupported");
+    if (!isSupported) {
+      print("[FLOATING VIDEO DEBUG] PiP failed reason: PiP not supported on this device.");
+      floatingCtrl.updateState(FloatingVideoState.unsupported);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Floating video is not supported on this device"),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Sync cached dimensions to native before entering PiP
+    await FloatingVideoChannel.setVideoPlaying(
+      true,
+      videoWidth: pipWidth,
+      videoHeight: pipHeight,
+      videoTitle: activeVideo.videoTitle,
+      pageUrl: activeVideo.pageUrl,
+      duration: activeVideo.duration,
+      currentTime: activeVideo.currentTime,
+      isVisible: true,
+    );
+
+    print("[FLOATING VIDEO DEBUG] minimize detected");
+    print("[FLOATING VIDEO DEBUG] PiP enter requested with dimensions ${pipWidth}x${pipHeight}");
+    print("[FLOATING VIDEO DEBUG] WebView kept alive");
+    floatingCtrl.updateState(FloatingVideoState.enteringPip);
+    await FloatingVideoChannel.enterPictureInPicture();
   }
 
   @override
@@ -65,11 +198,20 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
     if (!isBgPlayerEnabled) {
       BackgroundPlayerService.handleExtensionDisabled();
     }
+    final isFloatingVideosEnabled = extensionManager.isExtensionEnabled('floating_videos');
+    if (isFloatingVideosEnabled != _lastFloatingVideoState) {
+      _lastFloatingVideoState = isFloatingVideosEnabled;
+      FloatingVideoChannel.setFloatingVideoEnabled(isFloatingVideosEnabled);
+    }
+    
     final tabManager = context.watch<TabManager>();
     final isActiveTab = tabManager.currentTab?.id == widget.tab.id;
     if (isActiveTab && isBgPlayerEnabled && widget.tab.controller != null) {
       BackgroundPlayerService.setActiveController(widget.tab.id, widget.tab.controller);
       BackgroundPlayerService.injectMediaDetector(widget.tab.controller!);
+    }
+    if (isActiveTab && isFloatingVideosEnabled && widget.tab.controller != null) {
+      widget.tab.controller?.evaluateJavascript(source: FloatingVideoDetector.detectionScript);
     }
 
     return InAppWebView(
@@ -336,12 +478,21 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
         );
       },
       onWebViewCreated: (controller) {
+        if (!mounted) return;
         widget.tab.controller = controller;
         
-        final tabManager = context.read<TabManager>();
-        final isBgPlayerEnabled = context.read<ExtensionManager>().isExtensionEnabled('background_player');
+        final tabManager = _tabManager;
+        final extMgr = _extensionManager;
+        if (tabManager == null || extMgr == null) return;
+        final isBgPlayerEnabled = extMgr.isExtensionEnabled('background_player');
         if (isBgPlayerEnabled && tabManager.currentTab?.id == widget.tab.id) {
           BackgroundPlayerService.setActiveController(widget.tab.id, controller);
+        }
+
+        // Register Floating Videos JavaScript handler and active controller
+        FloatingVideosService.setupJavaScriptHandler(controller, widget.tab.id, context);
+        if (tabManager.currentTab?.id == widget.tab.id) {
+          _floatingCtrl?.setWebViewController(controller);
         }
         
         // Register JavaScript handler for video downloader
@@ -365,7 +516,8 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
           callback: (args) {
             if (!mounted) return;
             final data = args[0];
-            final downloadCtrl = context.read<DownloadController>();
+            final downloadCtrl = _downloadCtrl;
+            if (downloadCtrl == null) return;
             if (data == null) {
               downloadCtrl.updateCurrentPlayingVideo(null);
             } else {
@@ -377,24 +529,35 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
         );
       },
       onLoadStart: (controller, url) async {
-        final tabManager = context.read<TabManager>();
+        if (!mounted) return;
+        final tabManager = _tabManager;
+        if (tabManager == null) return;
         final canGoBack = await controller.canGoBack();
         final canGoForward = await controller.canGoForward();
+        if (!mounted) return;
         tabManager.updateTab(
           widget.tab.id,
           url: url.toString(),
           canGoBack: canGoBack,
           canGoForward: canGoForward,
         );
+        
+        // Force close floating video on actual page navigation
+        _floatingCtrl?.forceClose();
+
         await widget.scriptEngine.onPageStart(controller, url);
       },
       onLoadStop: (controller, url) async {
-        final tabManager = context.read<TabManager>();
-        final dataManager = context.read<BrowserDataManager>();
+        if (!mounted) return;
+        final tabManager = _tabManager;
+        final dataManager = _dataManager;
+        final extMgr = _extensionManager;
+        if (tabManager == null || dataManager == null || extMgr == null) return;
         
         final title = await controller.getTitle() ?? "New Tab";
         final canGoBack = await controller.canGoBack();
         final canGoForward = await controller.canGoForward();
+        if (!mounted) return;
         
         tabManager.updateTab(
           widget.tab.id,
@@ -420,32 +583,48 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
           }
         }
         
-        final isBgPlayerEnabled = context.read<ExtensionManager>().isExtensionEnabled('background_player');
+        final isBgPlayerEnabled = extMgr.isExtensionEnabled('background_player');
         if (isBgPlayerEnabled) {
           await BackgroundPlayerService.injectMediaDetector(controller);
+        }
+
+        final isFloatingVideosEnabled = extMgr.isExtensionEnabled('floating_videos');
+        if (isFloatingVideosEnabled) {
+          await controller.evaluateJavascript(source: FloatingVideoDetector.detectionScript);
         }
         
         await widget.scriptEngine.onPageFinished(controller, url);
       },
       onProgressChanged: (controller, progress) {
-        final tabManager = context.read<TabManager>();
-        tabManager.updateTab(widget.tab.id, progress: progress / 100.0);
+        if (!mounted) return;
+        _tabManager?.updateTab(widget.tab.id, progress: progress / 100.0);
       },
       onUpdateVisitedHistory: (controller, url, isReload) async {
-        final tabManager = context.read<TabManager>();
+        if (!mounted) return;
+        final tabManager = _tabManager;
+        final extMgr = _extensionManager;
+        if (tabManager == null || extMgr == null) return;
         final canGoBack = await controller.canGoBack();
         final canGoForward = await controller.canGoForward();
+        if (!mounted) return;
         tabManager.updateTab(
           widget.tab.id,
           url: url.toString(),
           canGoBack: canGoBack,
           canGoForward: canGoForward,
         );
+
+        final isFloatingVideosEnabled = extMgr.isExtensionEnabled('floating_videos');
+        if (isFloatingVideosEnabled) {
+          await controller.evaluateJavascript(source: FloatingVideoDetector.detectionScript);
+        }
+
         await widget.scriptEngine.onUrlChanged(controller, url);
       },
       onScrollChanged: (controller, x, y) {
+        if (!mounted) return;
         if (!widget.tab.isIncognito) {
-          context.read<TabManager>().updateTabScroll(
+          _tabManager?.updateTabScroll(
             widget.tab.id,
             x.toDouble(),
             y.toDouble(),
@@ -453,7 +632,9 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
         }
       },
       onDownloadStartRequest: (controller, downloadRequest) async {
-        final dataManager = context.read<BrowserDataManager>();
+        if (!mounted) return;
+        final dataManager = _dataManager;
+        if (dataManager == null) return;
         dataManager.addDownload(
           downloadRequest.url.toString(),
           title: downloadRequest.suggestedFilename ?? 'Video Download',
@@ -468,9 +649,10 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
         );
       },
       onLoadResource: (controller, resource) {
-        if (context.read<ExtensionManager>().isExtensionEnabled('dev_tools')) {
+        if (!mounted) return;
+        if (_extensionManager?.isExtensionEnabled('dev_tools') == true) {
           final type = resource.initiatorType ?? 'other';
-          context.read<DevToolsController>().addNetworkLog(
+          _devToolsCtrl?.addNetworkLog(
             resource.url?.toString() ?? '',
             'GET',
             type,
@@ -479,6 +661,7 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
         }
       },
       onReceivedError: (controller, request, error) {
+        if (!mounted) return;
         final isMainFrame = request.isForMainFrame ?? false;
         final url = request.url.toString();
 
@@ -536,12 +719,12 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
           """);
         }
 
-        if (context.read<ExtensionManager>().isExtensionEnabled('dev_tools')) {
-          context.read<DevToolsController>().addConsoleLog(
+        if (_extensionManager?.isExtensionEnabled('dev_tools') == true) {
+          _devToolsCtrl?.addConsoleLog(
             "WebView Error: ${error.description}",
             ConsoleLogType.error,
           );
-          context.read<DevToolsController>().addNetworkLog(
+          _devToolsCtrl?.addNetworkLog(
             url,
             request.method ?? 'GET',
             'document',
@@ -550,16 +733,17 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
         }
       },
       onReceivedHttpError: (controller, request, errorResponse) {
+        if (!mounted) return;
         final isMainFrame = request.isForMainFrame ?? false;
         if (!isMainFrame) return;
 
         print("HTTP Error: ${errorResponse.statusCode}");
-        if (context.read<ExtensionManager>().isExtensionEnabled('dev_tools')) {
-          context.read<DevToolsController>().addConsoleLog(
+        if (_extensionManager?.isExtensionEnabled('dev_tools') == true) {
+          _devToolsCtrl?.addConsoleLog(
             "HTTP Error ${errorResponse.statusCode} on ${request.url}",
             ConsoleLogType.error,
           );
-          context.read<DevToolsController>().addNetworkLog(
+          _devToolsCtrl?.addNetworkLog(
             request.url.toString(),
             request.method ?? 'GET',
             'document',
@@ -568,6 +752,7 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
         }
       },
       onConsoleMessage: (controller, consoleMessage) {
+        if (!mounted) return;
         final msg = consoleMessage.message;
         if (msg.contains("generate_204") || msg.contains("preloaded but not used")) {
           assert(() {
@@ -578,7 +763,7 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
         }
 
         print("Console: $msg");
-        if (context.read<ExtensionManager>().isExtensionEnabled('dev_tools')) {
+        if (_extensionManager?.isExtensionEnabled('dev_tools') == true) {
           ConsoleLogType logType = ConsoleLogType.log;
           if (consoleMessage.messageLevel == ConsoleMessageLevel.ERROR) {
             logType = ConsoleLogType.error;
@@ -589,15 +774,15 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
           } else if (consoleMessage.messageLevel == ConsoleMessageLevel.TIP) {
             logType = ConsoleLogType.info;
           }
-          context.read<DevToolsController>().addConsoleLog(
+          _devToolsCtrl?.addConsoleLog(
             msg,
             logType,
           );
         }
       },
       onTitleChanged: (controller, title) {
-        final tabManager = context.read<TabManager>();
-        tabManager.updateTab(widget.tab.id, title: title);
+        if (!mounted) return;
+        _tabManager?.updateTab(widget.tab.id, title: title);
       },
     );
   }

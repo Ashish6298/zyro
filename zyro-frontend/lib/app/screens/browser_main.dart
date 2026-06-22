@@ -13,6 +13,8 @@ import '../widgets/glass_container.dart';
 import 'tab_switcher.dart';
 
 import '../../features/video_downloader/widgets/floating_download_button.dart';
+import '../../features/extensions/floating_videos/floating_videos_controller.dart';
+import '../../features/extensions/floating_videos/widgets/floating_video_pip_view.dart';
 
 class BrowserMainScreen extends StatefulWidget {
   const BrowserMainScreen({super.key});
@@ -24,6 +26,7 @@ class BrowserMainScreen extends StatefulWidget {
 class _BrowserMainScreenState extends State<BrowserMainScreen> {
   final ScriptEngine _scriptEngine = ScriptEngine();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool? _lastPipState;
 
   void _showCyberMenu(BuildContext context) {
     _scaffoldKey.currentState?.openEndDrawer();
@@ -33,6 +36,20 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+
+    final floatingCtrl = context.watch<FloatingVideosController>();
+    final isInPipMode = floatingCtrl.state == FloatingVideoState.pipActive;
+
+    if (isInPipMode != _lastPipState) {
+      _lastPipState = isInPipMode;
+      if (isInPipMode) {
+        print("[FLOATING VIDEO DEBUG] PiP mode entered");
+        print("[FLOATING VIDEO DEBUG] normal browser UI hidden in PiP");
+      } else {
+        print("[FLOATING VIDEO DEBUG] PiP exited");
+        print("[FLOATING VIDEO DEBUG] normal UI restored");
+      }
+    }
 
     return Consumer2<TabManager, BrowserDataManager>(
       builder: (context, tabManager, dataManager, child) {
@@ -79,6 +96,15 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
 
         if (currentTab == null) {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+
+        if (isInPipMode) {
+          print("[FLOATING VIDEO DEBUG] browser Row skipped during PiP");
+          return FloatingVideoPipView(
+            tab: currentTab,
+            scriptEngine: _scriptEngine,
+            floatingCtrl: floatingCtrl,
+          );
         }
 
         return Scaffold(
