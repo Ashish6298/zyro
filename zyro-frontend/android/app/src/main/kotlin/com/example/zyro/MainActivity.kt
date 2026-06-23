@@ -116,7 +116,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        android.util.Log.d("FloatingVideo", "onUserLeaveHint called")
+        android.util.Log.d("FloatingVideo", "Home/minimize detected")
         if (::pipManager.isInitialized) {
             pipManager.enterPipIfPossible()
         }
@@ -125,6 +125,9 @@ class MainActivity : FlutterActivity() {
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode)
         android.util.Log.d("FloatingVideo", "onPictureInPictureModeChanged: isInPictureInPictureMode = $isInPictureInPictureMode")
+        if (!isInPictureInPictureMode) {
+            android.util.Log.d("FloatingVideo", "PiP exited")
+        }
         runOnUiThread {
             val channel = MethodChannel(flutterEngine?.dartExecutor?.binaryMessenger ?: return@runOnUiThread, FloatingVideoChannelHandler.CHANNEL_NAME)
             channel.invokeMethod("onPipModeChanged", isInPictureInPictureMode)

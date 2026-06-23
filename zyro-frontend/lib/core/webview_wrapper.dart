@@ -95,16 +95,16 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
     if (!isActiveTab) return;
 
     final isFloatingVideosEnabled = extMgr.isExtensionEnabled('floating_videos');
-    print("[FLOATING VIDEO DEBUG] Floating Videos enabled: $isFloatingVideosEnabled");
-    print("[FLOATING VIDEO DEBUG] app minimizing, checking PiP suitability. enabled: $isFloatingVideosEnabled");
+    print("Floating Videos enabled=$isFloatingVideosEnabled");
     
     if (!isFloatingVideosEnabled) {
       return;
     }
 
     final activeVideo = floatingCtrl.activeVideo;
+    final hasActiveVideo = activeVideo != null;
+    print("Active video cached=$hasActiveVideo");
     if (activeVideo == null) {
-      print("[FLOATING VIDEO DEBUG] No active video detected.");
       return;
     }
 

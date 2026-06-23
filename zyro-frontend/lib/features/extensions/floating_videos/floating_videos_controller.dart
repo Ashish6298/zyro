@@ -61,31 +61,55 @@ class FloatingVideosController extends ChangeNotifier {
         setRenderMode(BrowserRenderMode.pipActive);
         _pipTransitionStart = DateTime.now();
         updateState(FloatingVideoState.pipActive);
+        await _injectPipCleanupScript();
+        print("Cleanup reapplied after PiP start");
+        print("Native video surface attached");
+        print("PiP active");
+        print("Flutter received pipActive=true");
       } else {
         // Restore DOM styles
         final controller = _webViewController;
         if (controller != null) {
           try {
             await controller.evaluateJavascript(source: """
-              (function() {
-                let v = document.querySelector('video');
-                if (v && window.zyroOriginalVideoStyle) {
-                  v.style.setProperty('position', window.zyroOriginalVideoStyle.position || '', 'important');
-                  v.style.setProperty('top', window.zyroOriginalVideoStyle.top || '', 'important');
-                  v.style.setProperty('left', window.zyroOriginalVideoStyle.left || '', 'important');
-                  v.style.setProperty('width', window.zyroOriginalVideoStyle.width || '', 'important');
-                  v.style.setProperty('height', window.zyroOriginalVideoStyle.height || '', 'important');
-                  v.style.setProperty('object-fit', window.zyroOriginalVideoStyle.objectFit || '', 'important');
-                  v.style.setProperty('background', window.zyroOriginalVideoStyle.background || '', 'important');
-                  v.style.setProperty('z-index', window.zyroOriginalVideoStyle.zIndex || '', 'important');
+              (function () {
+                window.__zyroPipCleanupActive = false;
+
+                if (window.__zyroPipCleanupInterval) {
+                  clearInterval(window.__zyroPipCleanupInterval);
+                  window.__zyroPipCleanupInterval = null;
                 }
-                let styleEl = document.getElementById('zyro-pip-style');
-                if (styleEl) {
-                  styleEl.remove();
-                }
+
+                document.documentElement.classList.remove('zyro-pip-video-only');
+
+                document.getElementById('zyro-pip-video-only-style')?.remove();
+
+                document
+                  .querySelectorAll('[data-zyro-pip-video="true"]')
+                  .forEach(v => v.removeAttribute('data-zyro-pip-video'));
+
+                document
+                  .querySelectorAll('[data-zyro-pip-ancestor="true"]')
+                  .forEach(v => v.removeAttribute('data-zyro-pip-ancestor'));
+
+                document.querySelectorAll('*').forEach(el => {
+                  el.style.removeProperty('display');
+                  el.style.removeProperty('visibility');
+                  el.style.removeProperty('opacity');
+                  el.style.removeProperty('pointer-events');
+                  el.style.removeProperty('position');
+                  el.style.removeProperty('top');
+                  el.style.removeProperty('left');
+                  el.style.removeProperty('width');
+                  el.style.removeProperty('height');
+                  el.style.removeProperty('object-fit');
+                  el.style.removeProperty('background');
+                  el.style.removeProperty('z-index');
+                });
               })();
             """);
-            print("original page DOM restored");
+            print("Video-only DOM isolation restored");
+            print("Normal browser UI restored");
           } catch (e) {
             print("Error restoring DOM styles: $e");
           }
@@ -93,6 +117,8 @@ class FloatingVideosController extends ChangeNotifier {
 
         setRenderMode(BrowserRenderMode.normal);
         print("PiP exited");
+        print("Browser UI restored");
+        print("Flutter restored normal mode");
         _pipTransitionStart = null;
         updateState(FloatingVideoState.pipExited);
         // Restore to waitingForMinimize if video is still playing
@@ -146,92 +172,249 @@ class FloatingVideosController extends ChangeNotifier {
     }
   }
 
-  Future<void> enterVideoPip() async {
-    setRenderMode(BrowserRenderMode.pipPreparing);
-    print("Waiting one frame before enterPictureInPictureMode");
-
-    // Apply fullscreen fixed style and hide other DOM elements
+  Future<void> _injectPipCleanupScript() async {
     final controller = _webViewController;
     if (controller != null) {
       try {
         final dynamic result = await controller.evaluateJavascript(source: """
-          (function() {
-            let v = document.querySelector('video');
-            if (!v) return null;
+          (function () {
+            window.__zyroPipCleanupActive = true;
 
-            // Save original styles
-            window.zyroOriginalVideoStyle = {
-              position: v.style.position,
-              top: v.style.top,
-              left: v.style.left,
-              width: v.style.width,
-              height: v.style.height,
-              objectFit: v.style.objectFit,
-              background: v.style.background,
-              zIndex: v.style.zIndex
-            };
+            const old = document.getElementById('zyro-pip-video-only-style');
+            if (old) old.remove();
 
-            // Apply fullscreen fixed styles
-            v.style.setProperty('position', 'fixed', 'important');
-            v.style.setProperty('top', '0', 'important');
-            v.style.setProperty('left', '0', 'important');
-            v.style.setProperty('width', '100vw', 'important');
-            v.style.setProperty('height', '100vh', 'important');
-            v.style.setProperty('object-fit', 'contain', 'important');
-            v.style.setProperty('background', 'black', 'important');
-            v.style.setProperty('z-index', '2147483647', 'important');
+            const videos = Array.from(document.querySelectorAll('video'));
+            const activeVideo =
+              videos.find(v => !v.paused && !v.ended && v.videoWidth > 0 && v.videoHeight > 0) ||
+              videos.sort((a, b) => (b.currentTime || 0) - (a.currentTime || 0))[0];
 
-            // Hide non-video DOM elements
-            let styleEl = document.getElementById('zyro-pip-style');
-            if (!styleEl) {
-              styleEl = document.createElement('style');
-              styleEl.id = 'zyro-pip-style';
-              styleEl.textContent = `
-                body { overflow: hidden !important; }
-                .ytp-chrome-bottom, .ytp-chrome-top, .ytp-gradient-bottom, .ytp-gradient-top,
-                .ytp-playlist-menu, .ytp-upnext, .ytp-share-panel, .ytp-pause-overlay,
-                #header-bar, #playlist, #related, #comments, #footer,
-                .header-bar, .playlist, .related, .comments, .footer { display: none !important; }
-              `;
-              document.head.appendChild(styleEl);
+            if (!activeVideo) return null;
+
+            document.querySelectorAll('[data-zyro-pip-video]').forEach(el => el.removeAttribute('data-zyro-pip-video'));
+            document.querySelectorAll('[data-zyro-pip-ancestor]').forEach(el => el.removeAttribute('data-zyro-pip-ancestor'));
+
+            activeVideo.setAttribute('data-zyro-pip-video', 'true');
+            document.documentElement.classList.add('zyro-pip-video-only');
+
+            let parent = activeVideo.parentElement;
+            while (parent && parent !== document.body) {
+              parent.setAttribute('data-zyro-pip-ancestor', 'true');
+              parent = parent.parentElement;
             }
 
-            const rect = v.getBoundingClientRect();
+            const style = document.createElement('style');
+            style.id = 'zyro-pip-video-only-style';
+            style.textContent = `
+              html.zyro-pip-video-only,
+              html.zyro-pip-video-only body {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                overflow: hidden !important;
+                background: #000 !important;
+              }
+
+              html.zyro-pip-video-only body * {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+              }
+
+              html.zyro-pip-video-only [data-zyro-pip-ancestor="true"] {
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                position: static !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: auto !important;
+                height: auto !important;
+                overflow: visible !important;
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+                transform: none !important;
+                clip: auto !important;
+                clip-path: none !important;
+              }
+
+              html.zyro-pip-video-only video[data-zyro-pip-video="true"] {
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                object-fit: contain !important;
+                background: #000 !important;
+                z-index: 2147483647 !important;
+              }
+            `;
+            document.head.appendChild(style);
+
+            function hideNonVideoOverlays() {
+              if (!window.__zyroPipCleanupActive) return;
+
+              const videos = Array.from(document.querySelectorAll('video'));
+              const activeVideo =
+                videos.find(v => !v.paused && !v.ended && v.videoWidth > 0 && v.videoHeight > 0) ||
+                videos.sort((a, b) => (b.currentTime || 0) - (a.currentTime || 0))[0];
+
+              if (!activeVideo) return;
+
+              if (activeVideo.getAttribute('data-zyro-pip-video') !== 'true') {
+                document.querySelectorAll('[data-zyro-pip-video]').forEach(el => el.removeAttribute('data-zyro-pip-video'));
+                activeVideo.setAttribute('data-zyro-pip-video', 'true');
+              }
+
+              const currentAncestors = new Set();
+              let parent = activeVideo.parentElement;
+              while (parent && parent !== document.body) {
+                currentAncestors.add(parent);
+                parent = parent.parentElement;
+              }
+
+              document.querySelectorAll('[data-zyro-pip-ancestor]').forEach(el => {
+                if (!currentAncestors.has(el)) {
+                  el.removeAttribute('data-zyro-pip-ancestor');
+                }
+              });
+
+              currentAncestors.forEach(el => {
+                if (el.getAttribute('data-zyro-pip-ancestor') !== 'true') {
+                  el.setAttribute('data-zyro-pip-ancestor', 'true');
+                }
+              });
+
+              // Set inline display none on all other elements to override high-specificity !important styles
+              document.querySelectorAll('body *').forEach(el => {
+                if (el !== activeVideo && !currentAncestors.has(el)) {
+                  el.style.setProperty('display', 'none', 'important');
+                  el.style.setProperty('visibility', 'hidden', 'important');
+                  el.style.setProperty('opacity', '0', 'important');
+                }
+              });
+            }
+
+            window.hideNonVideoOverlays = hideNonVideoOverlays;
+            hideNonVideoOverlays();
+
+            window.__zyroPipCleanupInterval = setInterval(hideNonVideoOverlays, 250);
+
+            setTimeout(() => {
+              if (window.__zyroPipCleanupInterval) {
+                clearInterval(window.__zyroPipCleanupInterval);
+                window.__zyroPipCleanupInterval = null;
+              }
+            }, 3000);
+
+            const rect = activeVideo.getBoundingClientRect();
             return {
               'x': rect.left,
               'y': rect.top,
               'width': rect.width,
               'height': rect.height,
-              'videoWidth': v.videoWidth,
-              'videoHeight': v.videoHeight,
-              'isPlaying': !v.paused,
-              'currentTime': v.currentTime,
-              'duration': v.duration
+              'videoWidth': activeVideo.videoWidth,
+              'videoHeight': activeVideo.videoHeight,
+              'isPlaying': !activeVideo.paused,
+              'currentTime': activeVideo.currentTime,
+              'duration': activeVideo.duration
             };
           })();
         """);
 
         if (result != null) {
           final data = Map<String, dynamic>.from(result as Map);
-          print("active video rect detected");
-          print("PiP crop target selected");
-          print("non-video DOM hidden for PiP");
-          print("video-only page transform applied");
+          print("Active video detected");
+          print("Video rect captured");
 
           final int vw = data['videoWidth'] ?? 0;
           final int vh = data['videoHeight'] ?? 0;
           if (vw > 0 && vh > 0) {
+            print("Video dimensions valid");
             _lastKnownVideoWidth = vw;
             _lastKnownVideoHeight = vh;
+          }
+          if (data['x'] != null && data['y'] != null && data['width'] != null && data['height'] != null) {
+            _lastKnownBoundingRect = {
+              'left': data['x'],
+              'top': data['y'],
+              'width': data['width'],
+              'height': data['height'],
+            };
           }
         }
       } catch (e) {
         print("Error executing PiP transform script: $e");
       }
     }
+  }
 
-    await Future.delayed(const Duration(milliseconds: 120));
-    print("Native PiP requested after video-only view rendered");
+  Future<void> enterVideoPip() async {
+    print("Preparing native PiP");
+    setRenderMode(BrowserRenderMode.pipPreparing);
+    print("Browser UI hidden");
+    print("Waiting one frame before enterPictureInPictureMode");
+
+    final isSupported = await FloatingVideoChannel.isPictureInPictureSupported();
+    print("PiP supported=$isSupported");
+    if (!isSupported) {
+      print("PiP failed: not supported");
+      setRenderMode(BrowserRenderMode.normal);
+      return;
+    }
+
+    final controller = _webViewController;
+    bool customViewReady = false;
+
+    // Check if custom video view is already active
+    customViewReady = await FloatingVideoChannel.isCustomVideoViewActive();
+
+    if (!customViewReady && controller != null) {
+      print("Requesting native fullscreen via JavaScript");
+      await controller.evaluateJavascript(source: """
+        (function() {
+          const videos = Array.from(document.querySelectorAll('video'));
+          const activeVideo = videos.find(v => !v.paused && !v.ended && v.videoWidth > 0 && v.videoHeight > 0) || videos[0];
+          if (activeVideo) {
+            if (activeVideo.requestFullscreen) {
+              activeVideo.requestFullscreen();
+            } else if (activeVideo.webkitRequestFullscreen) {
+              activeVideo.webkitRequestFullscreen();
+            } else if (activeVideo.webkitEnterFullscreen) {
+              activeVideo.webkitEnterFullscreen();
+            }
+            return true;
+          }
+          return false;
+        })();
+      """);
+
+      // Wait up to 1.5 seconds for custom video view to become active on Android
+      int retries = 0;
+      while (retries < 15) {
+        customViewReady = await FloatingVideoChannel.isCustomVideoViewActive();
+        if (customViewReady) break;
+        await Future.delayed(const Duration(milliseconds: 100));
+        retries++;
+      }
+    }
+
+    print("Custom video view available=$customViewReady");
+
+    if (customViewReady) {
+      print("Using custom video view PiP");
+    } else {
+      print("Using Activity WebView PiP fallback");
+      await _injectPipCleanupScript();
+      print("Video-only DOM isolation applied");
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
 
     var pipWidth = _activeVideo?.videoWidth ?? 0;
     var pipHeight = _activeVideo?.videoHeight ?? 0;
@@ -241,11 +424,18 @@ class FloatingVideosController extends ChangeNotifier {
       print("Using cached video dimensions ${pipWidth}x${pipHeight}");
     }
     if (pipWidth <= 0 || pipHeight <= 0) {
+      print("Invalid video dimensions ignored");
       pipWidth = 1920;
       pipHeight = 1080;
+      print("Cached video dimensions used");
     }
 
     print("PiP aspect ratio applied");
+
+    final double vx = (_lastKnownBoundingRect['left'] ?? 0.0).toDouble();
+    final double vy = (_lastKnownBoundingRect['top'] ?? 0.0).toDouble();
+    final double vw = (_lastKnownBoundingRect['width'] ?? 0.0).toDouble();
+    final double vh = (_lastKnownBoundingRect['height'] ?? 0.0).toDouble();
 
     // Sync dimensions to native before PiP
     await FloatingVideoChannel.setVideoPlaying(
@@ -257,10 +447,19 @@ class FloatingVideosController extends ChangeNotifier {
       duration: _activeVideo?.duration ?? 0.0,
       currentTime: _activeVideo?.currentTime ?? 0.0,
       isVisible: true,
+      videoX: vx,
+      videoY: vy,
+      videoRectWidth: vw,
+      videoRectHeight: vh,
     );
 
-    await FloatingVideoChannel.enterPictureInPicture();
-    print("PiP entered with video-only content");
+    print("PiP requested");
+    final success = await FloatingVideoChannel.enterPictureInPicture();
+    if (success) {
+      print("PiP entered");
+    } else {
+      print("PiP failed: enterPictureInPictureMode returned false");
+    }
   }
 
   void updateState(FloatingVideoState newState) {
@@ -292,6 +491,7 @@ class FloatingVideosController extends ChangeNotifier {
     _webViewController = controller;
     _playbackRate = video.playbackRate;
     
+    print("Active video detected");
     print("[FLOATING VIDEO DEBUG] video detected: Title=${video.videoTitle}, "
         "isPlaying=${video.isPlaying}, isVisible=${video.isVisible}, "
         "dimensions=${video.videoWidth}x${video.videoHeight}");
@@ -301,6 +501,7 @@ class FloatingVideosController extends ChangeNotifier {
       _lastKnownVideoWidth = video.videoWidth;
       _lastKnownVideoHeight = video.videoHeight;
       print("[FLOATING VIDEO DEBUG] Cached video dimensions: ${_lastKnownVideoWidth}x${_lastKnownVideoHeight}");
+      print("Video dimensions cached");
     }
     if (video.boundingRect.isNotEmpty) {
       final w = (video.boundingRect['width'] ?? 0.0).toDouble();
@@ -334,6 +535,11 @@ class FloatingVideosController extends ChangeNotifier {
     final syncWidth = video.videoWidth > 0 ? video.videoWidth : _lastKnownVideoWidth;
     final syncHeight = video.videoHeight > 0 ? video.videoHeight : _lastKnownVideoHeight;
     
+    final double vx = (video.boundingRect['left'] ?? _lastKnownBoundingRect['left'] ?? 0.0).toDouble();
+    final double vy = (video.boundingRect['top'] ?? _lastKnownBoundingRect['top'] ?? 0.0).toDouble();
+    final double vw = (video.boundingRect['width'] ?? _lastKnownBoundingRect['width'] ?? 0.0).toDouble();
+    final double vh = (video.boundingRect['height'] ?? _lastKnownBoundingRect['height'] ?? 0.0).toDouble();
+
     FloatingVideoChannel.setVideoPlaying(
       video.isPlaying,
       videoWidth: syncWidth > 0 ? syncWidth : 1920,
@@ -343,6 +549,10 @@ class FloatingVideosController extends ChangeNotifier {
       duration: video.duration,
       currentTime: video.currentTime,
       isVisible: video.isVisible,
+      videoX: vx,
+      videoY: vy,
+      videoRectWidth: vw,
+      videoRectHeight: vh,
     );
 
     notifyListeners();

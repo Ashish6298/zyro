@@ -4,13 +4,17 @@ class FloatingVideoChannel {
   static const MethodChannel _channel = MethodChannel('zyro/floating_video');
   static void Function(bool)? onPipModeChangedCallback;
 
-  // Debouncing parameters
   static bool? _lastIsPlaying;
   static int? _lastVideoWidth;
   static int? _lastVideoHeight;
   static String? _lastVideoTitle;
   static String? _lastPageUrl;
   static bool? _lastFloatingVideoEnabled;
+
+  static double? _lastVideoX;
+  static double? _lastVideoY;
+  static double? _lastVideoRectWidth;
+  static double? _lastVideoRectHeight;
 
   static void initialize() {
     _channel.setMethodCallHandler((MethodCall call) async {
@@ -65,12 +69,20 @@ class FloatingVideoChannel {
     double duration = 0.0,
     double currentTime = 0.0,
     bool isVisible = true,
+    double videoX = 0.0,
+    double videoY = 0.0,
+    double videoRectWidth = 0.0,
+    double videoRectHeight = 0.0,
   }) async {
     if (_lastIsPlaying == isPlaying &&
         _lastVideoWidth == videoWidth &&
         _lastVideoHeight == videoHeight &&
         _lastVideoTitle == videoTitle &&
-        _lastPageUrl == pageUrl) {
+        _lastPageUrl == pageUrl &&
+        _lastVideoX == videoX &&
+        _lastVideoY == videoY &&
+        _lastVideoRectWidth == videoRectWidth &&
+        _lastVideoRectHeight == videoRectHeight) {
       print("setVideoPlaying skipped because state unchanged");
       return;
     }
@@ -80,6 +92,10 @@ class FloatingVideoChannel {
     _lastVideoHeight = videoHeight;
     _lastVideoTitle = videoTitle;
     _lastPageUrl = pageUrl;
+    _lastVideoX = videoX;
+    _lastVideoY = videoY;
+    _lastVideoRectWidth = videoRectWidth;
+    _lastVideoRectHeight = videoRectHeight;
 
     try {
       await _channel.invokeMethod('setVideoPlaying', {
@@ -91,6 +107,10 @@ class FloatingVideoChannel {
         'duration': duration,
         'currentTime': currentTime,
         'isVisible': isVisible,
+        'videoX': videoX,
+        'videoY': videoY,
+        'videoRectWidth': videoRectWidth,
+        'videoRectHeight': videoRectHeight,
       });
     } on MissingPluginException catch (_) {
       print("[FLOATING VIDEO CHANNEL] setVideoPlaying not implemented on native side yet.");
@@ -112,6 +132,15 @@ class FloatingVideoChannel {
       print("[FLOATING VIDEO CHANNEL] setFloatingVideoEnabled not implemented on native side yet.");
     } catch (e) {
       print("[FLOATING VIDEO CHANNEL ERROR] Failed to set extension enabled state: $e");
+    }
+  }
+
+  static Future<bool> isCustomVideoViewActive() async {
+    try {
+      final bool? active = await _channel.invokeMethod<bool>('isCustomVideoViewActive');
+      return active ?? false;
+    } catch (_) {
+      return false;
     }
   }
 }

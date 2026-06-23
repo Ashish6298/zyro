@@ -11,7 +11,13 @@ class FloatingVideoChannelHandler(private val pipManager: FloatingVideoPipManage
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         Log.d("FloatingVideo", "onMethodCall: ${call.method}")
+        pipManager.wrapWebChromeClient()
         when (call.method) {
+            "isCustomVideoViewActive" -> {
+                val isActive = pipManager.customVideoView != null
+                Log.d("FloatingVideo", "isCustomVideoViewActive query: $isActive")
+                result.success(isActive)
+            }
             "setVideoPlaying" -> {
                 pipManager.isPlaying = call.argument<Boolean>("isPlaying") ?: false
                 pipManager.isVideoPlaying = pipManager.isPlaying
@@ -22,6 +28,12 @@ class FloatingVideoChannelHandler(private val pipManager: FloatingVideoPipManage
                 pipManager.duration = call.argument<Double>("duration") ?: 0.0
                 pipManager.currentTime = call.argument<Double>("currentTime") ?: 0.0
                 pipManager.isVisible = call.argument<Boolean>("isVisible") ?: true
+                
+                // Read coordinates
+                pipManager.videoX = call.argument<Double>("videoX") ?: 0.0
+                pipManager.videoY = call.argument<Double>("videoY") ?: 0.0
+                pipManager.videoRectWidth = call.argument<Double>("videoRectWidth") ?: 0.0
+                pipManager.videoRectHeight = call.argument<Double>("videoRectHeight") ?: 0.0
                 
                 Log.d("FloatingVideo", "setVideoPlaying received: isPlaying=${pipManager.isPlaying}, dimensions=${pipManager.videoWidth}x${pipManager.videoHeight}")
                 result.success(null)

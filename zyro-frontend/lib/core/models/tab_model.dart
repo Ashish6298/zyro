@@ -18,6 +18,7 @@ class TabGroup {
 
 class TabModel {
   final String id;
+  final GlobalKey webViewKey = GlobalKey();
   String url;
   String? title;
   Favicon? favicon;

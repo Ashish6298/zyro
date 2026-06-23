@@ -30,7 +30,7 @@ class PipVideoOnlyView extends StatelessWidget {
     final double ratio = width / height;
 
     Widget webViewWidget = WebViewWrapper(
-      key: ValueKey(currentTab.id),
+      key: currentTab.webViewKey,
       tab: currentTab,
       scriptEngine: scriptEngine,
     );

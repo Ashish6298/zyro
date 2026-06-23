@@ -37,25 +37,14 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
     final floatingCtrl = context.watch<FloatingVideosController>();
     if (floatingCtrl.renderMode == BrowserRenderMode.pipPreparing ||
         floatingCtrl.renderMode == BrowserRenderMode.pipActive) {
-      print("browser_main.dart early returned PipVideoOnlyView");
-      print("Normal browser Row skipped during PiP");
       return PipVideoOnlyView(scriptEngine: _scriptEngine);
     }
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final isInPipMode = floatingCtrl.state == FloatingVideoState.pipActive;
-
-    if (isInPipMode != _lastPipState) {
-      _lastPipState = isInPipMode;
-      if (isInPipMode) {
-        print("[FLOATING VIDEO DEBUG] PiP mode entered");
-        print("[FLOATING VIDEO DEBUG] normal browser UI hidden in PiP");
-      } else {
-        print("[FLOATING VIDEO DEBUG] PiP exited");
-        print("[FLOATING VIDEO DEBUG] normal UI restored");
-      }
+    if (false != _lastPipState) {
+      _lastPipState = false;
     }
 
     return Consumer2<TabManager, BrowserDataManager>(
@@ -123,7 +112,7 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
                         index: tabManager.currentIndex,
                         children: tabManager.tabs.map((tab) {
                           return WebViewWrapper(
-                            key: ValueKey(tab.id),
+                            key: tab.webViewKey,
                             tab: tab,
                             scriptEngine: _scriptEngine,
                           );
