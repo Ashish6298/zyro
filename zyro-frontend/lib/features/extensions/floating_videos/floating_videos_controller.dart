@@ -302,9 +302,38 @@ class FloatingVideosController extends ChangeNotifier {
             }
 
             window.hideNonVideoOverlays = hideNonVideoOverlays;
+            
+            // Store playback state BEFORE DOM manipulation
+            const wasPlaying = !activeVideo.paused;
             hideNonVideoOverlays();
 
-            window.__zyroPipCleanupInterval = setInterval(hideNonVideoOverlays, 250);
+            // Resume playback after DOM manipulation if video was playing
+            if (wasPlaying && activeVideo.paused) {
+              try {
+                activeVideo.play().catch(e => {
+                  console.warn("Failed to resume video after PiP cleanup:", e);
+                });
+              } catch (e) {
+                console.warn("Error resuming video playback:", e);
+              }
+            }
+
+            // Periodic cleanup with playback preservation
+            window.__zyroPipCleanupInterval = setInterval(() => {
+              hideNonVideoOverlays();
+              // Ensure video stays playing in PiP mode
+              const videos = Array.from(document.querySelectorAll('video'));
+              const pipVideo = videos.find(v => v.getAttribute('data-zyro-pip-video') === 'true');
+              if (pipVideo && pipVideo.paused) {
+                try {
+                  pipVideo.play().catch(e => {
+                    console.warn("Failed to keep video playing in PiP:", e);
+                  });
+                } catch (e) {
+                  console.warn("Error in PiP playback preservation:", e);
+                }
+              }
+            }, 250);
 
             setTimeout(() => {
               if (window.__zyroPipCleanupInterval) {
