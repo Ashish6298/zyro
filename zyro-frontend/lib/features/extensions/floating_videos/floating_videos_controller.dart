@@ -13,9 +13,16 @@ enum FloatingVideoState {
   unsupported
 }
 
+enum BrowserRenderMode {
+  normal,
+  pipPreparing,
+  pipActive,
+}
+
 class FloatingVideosController extends ChangeNotifier {
   FloatingVideoModel? _activeVideo;
   FloatingVideoState _state = FloatingVideoState.idle;
+  BrowserRenderMode _renderMode = BrowserRenderMode.normal;
   
   double _opacity = 1.0;
   double _playbackRate = 1.0;
@@ -29,13 +36,18 @@ class FloatingVideosController extends ChangeNotifier {
   InAppWebViewController? _webViewController;
 
   // --- Cached video dimensions for PiP transition protection ---
+  // ignore: unused_field
   String _lastKnownVideoTitle = '';
   int _lastKnownVideoWidth = 0;
   int _lastKnownVideoHeight = 0;
+  // ignore: unused_field
   double _lastKnownCurrentTime = 0.0;
+  // ignore: unused_field
   double _lastKnownDuration = 0.0;
+  // ignore: unused_field
   String _lastKnownVideoUrl = '';
   bool _lastKnownIsPlaying = false;
+  // ignore: unused_field
   bool _lastKnownIsVisible = true;
   Map<String, dynamic> _lastKnownBoundingRect = {};
 
@@ -44,26 +56,28 @@ class FloatingVideosController extends ChangeNotifier {
   static const Duration _pipTransitionWindow = Duration(seconds: 3);
 
   FloatingVideosController() {
-    FloatingVideoChannel.onPipEnteredCallback = () {
-      print("[FLOATING VIDEO DEBUG] PiP entered");
-      _pipTransitionStart = DateTime.now();
-      updateState(FloatingVideoState.pipActive);
-    };
-    FloatingVideoChannel.onPipExitedCallback = () {
-      print("[FLOATING VIDEO DEBUG] PiP exited");
-      _pipTransitionStart = null;
-      updateState(FloatingVideoState.pipExited);
-      // Restore to waitingForMinimize if video is still playing
-      if (_lastKnownIsPlaying) {
-        updateState(FloatingVideoState.waitingForMinimize);
+    FloatingVideoChannel.onPipModeChangedCallback = (active) {
+      if (active) {
+        setRenderMode(BrowserRenderMode.pipActive);
+        _pipTransitionStart = DateTime.now();
+        updateState(FloatingVideoState.pipActive);
       } else {
-        updateState(FloatingVideoState.idle);
+        setRenderMode(BrowserRenderMode.normal);
+        _pipTransitionStart = null;
+        updateState(FloatingVideoState.pipExited);
+        // Restore to waitingForMinimize if video is still playing
+        if (_lastKnownIsPlaying) {
+          updateState(FloatingVideoState.waitingForMinimize);
+        } else {
+          updateState(FloatingVideoState.idle);
+        }
       }
     };
   }
 
   FloatingVideoModel? get activeVideo => _activeVideo;
   FloatingVideoState get state => _state;
+  BrowserRenderMode get renderMode => _renderMode;
   
   double get opacity => _opacity;
   double get playbackRate => _playbackRate;
@@ -73,6 +87,8 @@ class FloatingVideosController extends ChangeNotifier {
   
   double get positionX => _positionX;
   double get positionY => _positionY;
+
+  bool get isPipActive => _renderMode == BrowserRenderMode.pipActive;
 
   // Expose cached dimensions for PiP view
   int get lastKnownVideoWidth => _lastKnownVideoWidth;
@@ -84,7 +100,54 @@ class FloatingVideosController extends ChangeNotifier {
     return DateTime.now().difference(_pipTransitionStart!) < _pipTransitionWindow;
   }
 
-  bool get isInPipMode => _state == FloatingVideoState.pipActive || _state == FloatingVideoState.enteringPip;
+  bool get isInPipMode => _renderMode == BrowserRenderMode.pipActive || _renderMode == BrowserRenderMode.pipPreparing;
+
+  void setRenderMode(BrowserRenderMode mode) {
+    if (_renderMode != mode) {
+      _renderMode = mode;
+      if (mode == BrowserRenderMode.pipPreparing) {
+        print("Preparing PiP: switching to video-only render mode");
+      } else if (mode == BrowserRenderMode.pipActive) {
+        print("PiP active");
+      } else if (mode == BrowserRenderMode.normal) {
+        print("PiP exited, normal browser UI restored");
+      }
+      notifyListeners();
+    }
+  }
+
+  Future<void> enterVideoPip() async {
+    setRenderMode(BrowserRenderMode.pipPreparing);
+    print("Waiting one frame before enterPictureInPictureMode");
+    await Future.delayed(const Duration(milliseconds: 120));
+    print("Native PiP requested after video-only view rendered");
+
+    var pipWidth = _activeVideo?.videoWidth ?? 0;
+    var pipHeight = _activeVideo?.videoHeight ?? 0;
+    if (pipWidth <= 0 || pipHeight <= 0) {
+      pipWidth = _lastKnownVideoWidth;
+      pipHeight = _lastKnownVideoHeight;
+      print("Using cached video dimensions ${pipWidth}x${pipHeight}");
+    }
+    if (pipWidth <= 0 || pipHeight <= 0) {
+      pipWidth = 1920;
+      pipHeight = 1080;
+    }
+
+    // Sync dimensions to native before PiP
+    await FloatingVideoChannel.setVideoPlaying(
+      true,
+      videoWidth: pipWidth,
+      videoHeight: pipHeight,
+      videoTitle: _activeVideo?.videoTitle ?? "",
+      pageUrl: _activeVideo?.pageUrl ?? "",
+      duration: _activeVideo?.duration ?? 0.0,
+      currentTime: _activeVideo?.currentTime ?? 0.0,
+      isVisible: true,
+    );
+
+    await FloatingVideoChannel.enterPictureInPicture();
+  }
 
   void updateState(FloatingVideoState newState) {
     if (_state != newState) {
@@ -98,6 +161,9 @@ class FloatingVideosController extends ChangeNotifier {
     // During PiP transition, ignore stale reports with 0x0 dimensions or isPlaying=false
     if (isInPipMode || _isInPipTransition) {
       if (video.videoWidth <= 0 || video.videoHeight <= 0 || !video.isPlaying) {
+        if (video.videoWidth <= 0 || video.videoHeight <= 0) {
+          print("Ignoring invalid 0x0 during PiP transition");
+        }
         print("[FLOATING VIDEO DEBUG] Ignoring stale video update during PiP transition: "
             "dimensions=${video.videoWidth}x${video.videoHeight}, isPlaying=${video.isPlaying}");
         // Only update currentTime if it's valid (timeline continues in PiP)
@@ -147,6 +213,10 @@ class FloatingVideosController extends ChangeNotifier {
     }
     
     // Sync with native PiP state - use cached dimensions if current are invalid
+    final bool useCached = video.videoWidth <= 0 || video.videoHeight <= 0;
+    if (useCached) {
+      print("Using cached video dimensions ${_lastKnownVideoWidth}x${_lastKnownVideoHeight}");
+    }
     final syncWidth = video.videoWidth > 0 ? video.videoWidth : _lastKnownVideoWidth;
     final syncHeight = video.videoHeight > 0 ? video.videoHeight : _lastKnownVideoHeight;
     
@@ -160,7 +230,7 @@ class FloatingVideosController extends ChangeNotifier {
       currentTime: video.currentTime,
       isVisible: video.isVisible,
     );
-    
+
     notifyListeners();
   }
 

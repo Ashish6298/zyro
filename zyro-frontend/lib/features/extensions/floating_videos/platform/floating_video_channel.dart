@@ -2,27 +2,29 @@ import 'package:flutter/services.dart';
 
 class FloatingVideoChannel {
   static const MethodChannel _channel = MethodChannel('zyro/floating_video');
-  static void Function()? onPipEnteredCallback;
-  static void Function()? onPipExitedCallback;
+  static void Function(bool)? onPipModeChangedCallback;
 
   // Debouncing parameters
   static bool? _lastIsPlaying;
   static int? _lastVideoWidth;
   static int? _lastVideoHeight;
-  static DateTime? _lastSentTime;
+  static String? _lastVideoTitle;
+  static String? _lastPageUrl;
+  static bool? _lastFloatingVideoEnabled;
 
   static void initialize() {
     _channel.setMethodCallHandler((MethodCall call) async {
       print("[FLOATING VIDEO CHANNEL] Received native call: ${call.method}");
       switch (call.method) {
-        case "onPipEntered":
-          if (onPipEnteredCallback != null) {
-            onPipEnteredCallback!();
+        case "onPipModeChanged":
+          final active = call.arguments as bool;
+          if (active) {
+            print("onPipModeChanged(true) received in Flutter");
+          } else {
+            print("onPipModeChanged(false) received in Flutter");
           }
-          break;
-        case "onPipExited":
-          if (onPipExitedCallback != null) {
-            onPipExitedCallback!();
+          if (onPipModeChangedCallback != null) {
+            onPipModeChangedCallback!(active);
           }
           break;
       }
@@ -64,21 +66,20 @@ class FloatingVideoChannel {
     double currentTime = 0.0,
     bool isVisible = true,
   }) async {
-    final now = DateTime.now();
-    // Only send changes if playing status or dimensions change,
-    // or if 3 seconds have passed since the last update.
     if (_lastIsPlaying == isPlaying &&
         _lastVideoWidth == videoWidth &&
         _lastVideoHeight == videoHeight &&
-        _lastSentTime != null &&
-        now.difference(_lastSentTime!).inSeconds < 3) {
+        _lastVideoTitle == videoTitle &&
+        _lastPageUrl == pageUrl) {
+      print("setVideoPlaying skipped because state unchanged");
       return;
     }
 
     _lastIsPlaying = isPlaying;
     _lastVideoWidth = videoWidth;
     _lastVideoHeight = videoHeight;
-    _lastSentTime = now;
+    _lastVideoTitle = videoTitle;
+    _lastPageUrl = pageUrl;
 
     try {
       await _channel.invokeMethod('setVideoPlaying', {
@@ -99,6 +100,12 @@ class FloatingVideoChannel {
   }
 
   static Future<void> setFloatingVideoEnabled(bool enabled) async {
+    if (_lastFloatingVideoEnabled == enabled) {
+      print("setFloatingVideoEnabled skipped because state unchanged");
+      return;
+    }
+    _lastFloatingVideoEnabled = enabled;
+
     try {
       await _channel.invokeMethod('setFloatingVideoEnabled', {'enabled': enabled});
     } on MissingPluginException catch (_) {
@@ -108,3 +115,4 @@ class FloatingVideoChannel {
     }
   }
 }
+

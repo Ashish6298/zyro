@@ -127,13 +127,7 @@ class MainActivity : FlutterActivity() {
         android.util.Log.d("FloatingVideo", "onPictureInPictureModeChanged: isInPictureInPictureMode = $isInPictureInPictureMode")
         runOnUiThread {
             val channel = MethodChannel(flutterEngine?.dartExecutor?.binaryMessenger ?: return@runOnUiThread, FloatingVideoChannelHandler.CHANNEL_NAME)
-            if (isInPictureInPictureMode) {
-                android.util.Log.d("FloatingVideo", "PiP entered successfully")
-                channel.invokeMethod("onPipEntered", null)
-            } else {
-                android.util.Log.d("FloatingVideo", "PiP exited")
-                channel.invokeMethod("onPipExited", null)
-            }
+            channel.invokeMethod("onPipModeChanged", isInPictureInPictureMode)
         }
     }
 

@@ -14,7 +14,7 @@ import 'tab_switcher.dart';
 
 import '../../features/video_downloader/widgets/floating_download_button.dart';
 import '../../features/extensions/floating_videos/floating_videos_controller.dart';
-import '../../features/extensions/floating_videos/widgets/floating_video_pip_view.dart';
+import '../../features/extensions/floating_videos/widgets/pip_video_only_view.dart';
 
 class BrowserMainScreen extends StatefulWidget {
   const BrowserMainScreen({super.key});
@@ -34,10 +34,17 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final floatingCtrl = context.watch<FloatingVideosController>();
+    if (floatingCtrl.renderMode == BrowserRenderMode.pipPreparing ||
+        floatingCtrl.renderMode == BrowserRenderMode.pipActive) {
+      print("browser_main.dart early returned PipVideoOnlyView");
+      print("Normal browser Row skipped during PiP");
+      return PipVideoOnlyView(scriptEngine: _scriptEngine);
+    }
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final floatingCtrl = context.watch<FloatingVideosController>();
     final isInPipMode = floatingCtrl.state == FloatingVideoState.pipActive;
 
     if (isInPipMode != _lastPipState) {
@@ -98,14 +105,6 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
 
-        if (isInPipMode) {
-          print("[FLOATING VIDEO DEBUG] browser Row skipped during PiP");
-          return FloatingVideoPipView(
-            tab: currentTab,
-            scriptEngine: _scriptEngine,
-            floatingCtrl: floatingCtrl,
-          );
-        }
 
         return Scaffold(
           key: _scaffoldKey,

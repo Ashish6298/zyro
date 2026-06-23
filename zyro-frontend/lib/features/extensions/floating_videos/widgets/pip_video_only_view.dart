@@ -1,26 +1,30 @@
 import 'package:flutter/material.dart';
-import '../../../../core/models/tab_model.dart';
+import 'package:provider/provider.dart';
+import '../../../../core/tab_manager.dart';
 import '../../../../core/webview_wrapper.dart';
 import '../../../../engine/script_engine.dart';
 import '../floating_videos_controller.dart';
 
-class FloatingVideoPipView extends StatelessWidget {
-  final TabModel tab;
+class PipVideoOnlyView extends StatelessWidget {
   final ScriptEngine scriptEngine;
-  final FloatingVideosController floatingCtrl;
 
-  const FloatingVideoPipView({
+  const PipVideoOnlyView({
     super.key,
-    required this.tab,
     required this.scriptEngine,
-    required this.floatingCtrl,
   });
 
   @override
   Widget build(BuildContext context) {
-    print("[FLOATING VIDEO DEBUG] PiP render mode enabled");
-    print("[FLOATING VIDEO DEBUG] Normal browser UI skipped");
+    final tabManager = context.watch<TabManager>();
+    final currentTab = tabManager.currentTab;
+    if (currentTab == null) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: SizedBox.shrink(),
+      );
+    }
 
+    final floatingCtrl = context.watch<FloatingVideosController>();
     final video = floatingCtrl.activeVideo;
 
     // Determine video bounds - prefer current, fall back to cached
@@ -30,7 +34,6 @@ class FloatingVideoPipView extends StatelessWidget {
       final h = (video.boundingRect['height'] ?? 0.0).toDouble();
       if (w > 0 && h > 0) {
         rect = video.boundingRect;
-        print("[FLOATING VIDEO DEBUG] Using current video bounds: w=$w, h=$h");
       }
     }
     if (rect.isEmpty && floatingCtrl.lastKnownBoundingRect.isNotEmpty) {
@@ -38,13 +41,12 @@ class FloatingVideoPipView extends StatelessWidget {
       final h = (floatingCtrl.lastKnownBoundingRect['height'] ?? 0.0).toDouble();
       if (w > 0 && h > 0) {
         rect = floatingCtrl.lastKnownBoundingRect;
-        print("[FLOATING VIDEO DEBUG] Using cached video dimensions: w=$w, h=$h");
       }
     }
 
     Widget webViewWidget = WebViewWrapper(
-      key: ValueKey(tab.id),
-      tab: tab,
+      key: ValueKey(currentTab.id),
+      tab: currentTab,
       scriptEngine: scriptEngine,
     );
 
@@ -53,11 +55,9 @@ class FloatingVideoPipView extends StatelessWidget {
       final vy = (rect['y'] ?? 0.0).toDouble();
       final vw = (rect['width'] ?? 0.0).toDouble();
       final vh = (rect['height'] ?? 0.0).toDouble();
-      print("[FLOATING VIDEO DEBUG] video bounds detected: x=$vx, y=$vy, w=$vw, h=$vh");
 
       if (vw > 0 && vh > 0) {
         final ratio = vw / vh;
-        print("[FLOATING VIDEO DEBUG] video aspect ratio calculated: $ratio. video aspect ratio applied.");
         final size = MediaQuery.of(context).size;
         final screenW = size.width;
         final screenH = size.height;
@@ -81,8 +81,8 @@ class FloatingVideoPipView extends StatelessWidget {
                         width: screenW,
                         height: screenH,
                         child: WebViewWrapper(
-                          key: ValueKey(tab.id),
-                          tab: tab,
+                          key: ValueKey(currentTab.id),
+                          tab: currentTab,
                           scriptEngine: scriptEngine,
                         ),
                       ),
@@ -94,13 +94,15 @@ class FloatingVideoPipView extends StatelessWidget {
           ),
         );
       }
-    } else {
-      print("[FLOATING VIDEO DEBUG] No valid video bounds available, showing fullscreen WebView");
     }
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Center(child: webViewWidget),
+      body: SizedBox.expand(
+        child: Center(
+          child: webViewWidget,
+        ),
+      ),
     );
   }
 }

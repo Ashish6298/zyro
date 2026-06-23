@@ -50,6 +50,7 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
   FloatingVideosController? _floatingCtrl;
   DownloadController? _downloadCtrl;
   DevToolsController? _devToolsCtrl;
+  AdBlockStatsService? _adBlockStatsService;
 
   @override
   void initState() {
@@ -66,6 +67,7 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
     _floatingCtrl = context.read<FloatingVideosController>();
     _downloadCtrl = context.read<DownloadController>();
     _devToolsCtrl = context.read<DevToolsController>();
+    _adBlockStatsService = context.read<AdBlockStatsService>();
   }
 
   @override
@@ -134,13 +136,13 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
     if (pipWidth <= 0 || pipHeight <= 0) {
       pipWidth = floatingCtrl.lastKnownVideoWidth;
       pipHeight = floatingCtrl.lastKnownVideoHeight;
-      print("[FLOATING VIDEO DEBUG] Using cached video dimensions: ${pipWidth}x${pipHeight}");
+      print("Using cached video dimensions ${pipWidth}x${pipHeight}");
     }
     // Fallback to 16:9 if still invalid
     if (pipWidth <= 0 || pipHeight <= 0) {
       pipWidth = 1920;
       pipHeight = 1080;
-      print("[FLOATING VIDEO DEBUG] Ignoring invalid 0x0 dimensions, using 16:9 fallback");
+      print("Ignoring invalid 0x0 during PiP transition");
     }
 
     final isSupported = await FloatingVideoChannel.isPictureInPictureSupported();
@@ -158,23 +160,9 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
       return;
     }
 
-    // Sync cached dimensions to native before entering PiP
-    await FloatingVideoChannel.setVideoPlaying(
-      true,
-      videoWidth: pipWidth,
-      videoHeight: pipHeight,
-      videoTitle: activeVideo.videoTitle,
-      pageUrl: activeVideo.pageUrl,
-      duration: activeVideo.duration,
-      currentTime: activeVideo.currentTime,
-      isVisible: true,
-    );
-
     print("[FLOATING VIDEO DEBUG] minimize detected");
-    print("[FLOATING VIDEO DEBUG] PiP enter requested with dimensions ${pipWidth}x${pipHeight}");
     print("[FLOATING VIDEO DEBUG] WebView kept alive");
-    floatingCtrl.updateState(FloatingVideoState.enteringPip);
-    await FloatingVideoChannel.enterPictureInPicture();
+    await floatingCtrl.enterVideoPip();
   }
 
   @override
@@ -299,10 +287,13 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         ] : [],
       ),
       shouldInterceptRequest: (controller, request) async {
-        final adBlockStatsService = Provider.of<AdBlockStatsService>(context, listen: false);
+        if (!mounted || _adBlockStatsService == null || _extensionManager == null) {
+          print("Provider callback ignored because widget unmounted");
+          return null;
+        }
         final adBlockService = AdBlockService(
-          statsService: adBlockStatsService,
-          extensionManager: Provider.of<ExtensionManager>(context, listen: false),
+          statsService: _adBlockStatsService!,
+          extensionManager: _extensionManager!,
         );
         return await adBlockService.interceptRequest(
           url: request.url.toString(),
@@ -407,8 +398,10 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
             if (elementEval != null) {
               final elementMap = Map<String, dynamic>.from(elementEval as Map);
               final info = SelectedElementInfo.fromMap(elementMap);
-              if (mounted) {
-                context.read<DevToolsController>().setSelectedElement(info);
+              if (mounted && _devToolsCtrl != null) {
+                _devToolsCtrl!.setSelectedElement(info);
+              } else if (!mounted) {
+                print("Provider callback ignored because widget unmounted");
               }
               if (finalUrl.isEmpty) {
                 finalUrl = info.href ?? info.src ?? widget.tab.url;
@@ -465,7 +458,10 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
           imageSrcIfInsideLink: imageSrcIfInsideLink,
         );
 
-        if (!mounted) return;
+        if (!mounted) {
+          print("Provider callback ignored because widget unmounted");
+          return;
+        }
 
         showDialog(
           context: context,
@@ -478,7 +474,10 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         );
       },
       onWebViewCreated: (controller) {
-        if (!mounted) return;
+        if (!mounted) {
+          print("Provider callback ignored because widget unmounted");
+          return;
+        }
         widget.tab.controller = controller;
         
         final tabManager = _tabManager;
@@ -490,7 +489,7 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         }
 
         // Register Floating Videos JavaScript handler and active controller
-        FloatingVideosService.setupJavaScriptHandler(controller, widget.tab.id, context);
+        FloatingVideosService.setupJavaScriptHandler(controller, widget.tab.id, extMgr, _floatingCtrl!);
         if (tabManager.currentTab?.id == widget.tab.id) {
           _floatingCtrl?.setWebViewController(controller);
         }
@@ -499,6 +498,10 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         controller.addJavaScriptHandler(
           handlerName: 'triggerDownload',
           callback: (args) {
+            if (!mounted) {
+              print("Provider callback ignored because widget unmounted");
+              return;
+            }
             final data = args[0];
             _showDownloadPopup(
               context,
@@ -514,7 +517,10 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         controller.addJavaScriptHandler(
           handlerName: 'updatePlayingVideo',
           callback: (args) {
-            if (!mounted) return;
+            if (!mounted) {
+              print("Provider callback ignored because widget unmounted");
+              return;
+            }
             final data = args[0];
             final downloadCtrl = _downloadCtrl;
             if (downloadCtrl == null) return;
@@ -529,12 +535,18 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         );
       },
       onLoadStart: (controller, url) async {
-        if (!mounted) return;
+        if (!mounted) {
+          print("Provider callback ignored because widget unmounted");
+          return;
+        }
         final tabManager = _tabManager;
         if (tabManager == null) return;
         final canGoBack = await controller.canGoBack();
         final canGoForward = await controller.canGoForward();
-        if (!mounted) return;
+        if (!mounted) {
+          print("Provider callback ignored because widget unmounted");
+          return;
+        }
         tabManager.updateTab(
           widget.tab.id,
           url: url.toString(),
@@ -548,7 +560,10 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         await widget.scriptEngine.onPageStart(controller, url);
       },
       onLoadStop: (controller, url) async {
-        if (!mounted) return;
+        if (!mounted) {
+          print("Provider callback ignored because widget unmounted");
+          return;
+        }
         final tabManager = _tabManager;
         final dataManager = _dataManager;
         final extMgr = _extensionManager;
@@ -557,7 +572,10 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         final title = await controller.getTitle() ?? "New Tab";
         final canGoBack = await controller.canGoBack();
         final canGoForward = await controller.canGoForward();
-        if (!mounted) return;
+        if (!mounted) {
+          print("Provider callback ignored because widget unmounted");
+          return;
+        }
         
         tabManager.updateTab(
           widget.tab.id,
@@ -596,17 +614,26 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         await widget.scriptEngine.onPageFinished(controller, url);
       },
       onProgressChanged: (controller, progress) {
-        if (!mounted) return;
+        if (!mounted) {
+          print("Provider callback ignored because widget unmounted");
+          return;
+        }
         _tabManager?.updateTab(widget.tab.id, progress: progress / 100.0);
       },
       onUpdateVisitedHistory: (controller, url, isReload) async {
-        if (!mounted) return;
+        if (!mounted) {
+          print("Provider callback ignored because widget unmounted");
+          return;
+        }
         final tabManager = _tabManager;
         final extMgr = _extensionManager;
         if (tabManager == null || extMgr == null) return;
         final canGoBack = await controller.canGoBack();
         final canGoForward = await controller.canGoForward();
-        if (!mounted) return;
+        if (!mounted) {
+          print("Provider callback ignored because widget unmounted");
+          return;
+        }
         tabManager.updateTab(
           widget.tab.id,
           url: url.toString(),
@@ -622,7 +649,10 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         await widget.scriptEngine.onUrlChanged(controller, url);
       },
       onScrollChanged: (controller, x, y) {
-        if (!mounted) return;
+        if (!mounted) {
+          print("Provider callback ignored because widget unmounted");
+          return;
+        }
         if (!widget.tab.isIncognito) {
           _tabManager?.updateTabScroll(
             widget.tab.id,
@@ -632,7 +662,10 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         }
       },
       onDownloadStartRequest: (controller, downloadRequest) async {
-        if (!mounted) return;
+        if (!mounted) {
+          print("Provider callback ignored because widget unmounted");
+          return;
+        }
         final dataManager = _dataManager;
         if (dataManager == null) return;
         dataManager.addDownload(
@@ -649,7 +682,10 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         );
       },
       onLoadResource: (controller, resource) {
-        if (!mounted) return;
+        if (!mounted) {
+          print("Provider callback ignored because widget unmounted");
+          return;
+        }
         if (_extensionManager?.isExtensionEnabled('dev_tools') == true) {
           final type = resource.initiatorType ?? 'other';
           _devToolsCtrl?.addNetworkLog(
@@ -661,7 +697,10 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         }
       },
       onReceivedError: (controller, request, error) {
-        if (!mounted) return;
+        if (!mounted) {
+          print("Provider callback ignored because widget unmounted");
+          return;
+        }
         final isMainFrame = request.isForMainFrame ?? false;
         final url = request.url.toString();
 
@@ -733,7 +772,10 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         }
       },
       onReceivedHttpError: (controller, request, errorResponse) {
-        if (!mounted) return;
+        if (!mounted) {
+          print("Provider callback ignored because widget unmounted");
+          return;
+        }
         final isMainFrame = request.isForMainFrame ?? false;
         if (!isMainFrame) return;
 
@@ -752,7 +794,10 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         }
       },
       onConsoleMessage: (controller, consoleMessage) {
-        if (!mounted) return;
+        if (!mounted) {
+          print("Provider callback ignored because widget unmounted");
+          return;
+        }
         final msg = consoleMessage.message;
         if (msg.contains("generate_204") || msg.contains("preloaded but not used")) {
           assert(() {
@@ -781,7 +826,10 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         }
       },
       onTitleChanged: (controller, title) {
-        if (!mounted) return;
+        if (!mounted) {
+          print("Provider callback ignored because widget unmounted");
+          return;
+        }
         _tabManager?.updateTab(widget.tab.id, title: title);
       },
     );
