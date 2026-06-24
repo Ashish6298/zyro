@@ -133,7 +133,7 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
                   builder: (_, screenshotPro, __) {
                     if (!screenshotPro.enabled || currentTab.isIncognito)
                       return const SizedBox.shrink();
-                    return const ScreenshotFloatingButton();
+                    return ScreenshotFloatingButton(controller: screenshotPro, tab: currentTab);
                   },
                 ),
               ],
