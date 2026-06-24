@@ -84,6 +84,44 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
     }
   }
 
+  bool shouldEnterFloatingVideoMode() {
+    final currentTab = widget.tab;
+    final url = currentTab.url.toLowerCase();
+
+    final isYoutube =
+        url.contains("youtube.com") ||
+        url.contains("m.youtube.com") ||
+        url.contains("youtu.be") ||
+        url.contains("music.youtube.com");
+
+    final hasActiveVideo = _floatingCtrl?.activeVideo != null;
+    final isPlaying = _floatingCtrl?.activeVideo?.isPlaying ?? false;
+    final floatingVideosEnabled = _extensionManager?.isExtensionEnabled('floating_videos') ?? false;
+
+    debugPrint("Floating Video eligibility check started");
+    debugPrint("Current URL=$url");
+    debugPrint("YouTube page=$isYoutube");
+    debugPrint("Video detected=$hasActiveVideo");
+    debugPrint("Video playing=$isPlaying");
+
+    final isYoutubeVideoPlaying = _floatingCtrl?.isYoutubeVideoPlaying ?? false;
+
+    final allowed = floatingVideosEnabled &&
+           isYoutube &&
+           hasActiveVideo &&
+           isPlaying &&
+           isYoutubeVideoPlaying;
+
+    if (allowed) {
+      debugPrint("PiP allowed");
+      debugPrint("Entering PiP");
+    } else {
+      debugPrint("PiP blocked because page is not eligible");
+    }
+
+    return allowed;
+  }
+
   Future<void> _checkAndTriggerPiP() async {
     if (!mounted) return;
     final tabManager = _tabManager;
@@ -94,16 +132,14 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
     final isActiveTab = tabManager.currentTab?.id == widget.tab.id;
     if (!isActiveTab) return;
 
-    final isFloatingVideosEnabled = extMgr.isExtensionEnabled('floating_videos');
-    print("Floating Videos enabled=$isFloatingVideosEnabled");
-    
-    if (!isFloatingVideosEnabled) {
+    if (!shouldEnterFloatingVideoMode()) {
+      debugPrint(
+        "Floating Video blocked: current page is not eligible"
+      );
       return;
     }
 
     final activeVideo = floatingCtrl.activeVideo;
-    final hasActiveVideo = activeVideo != null;
-    print("Active video cached=$hasActiveVideo");
     if (activeVideo == null) {
       return;
     }

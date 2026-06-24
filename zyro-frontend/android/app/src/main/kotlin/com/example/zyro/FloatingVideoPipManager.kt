@@ -141,6 +141,20 @@ class FloatingVideoPipManager(private val activity: Activity) {
                     Log.d("FloatingVideo", "PiP source rect hint applied")
                 }
                 
+                val url = pageUrl.lowercase()
+                val floatingVideosEnabled = isFloatingVideosEnabled
+                val activeVideoCached = isVideoPlaying
+                val videoPlaying = isPlaying
+                val isYoutubePage = url.contains("youtube.com") ||
+                                    url.contains("m.youtube.com") ||
+                                    url.contains("youtu.be") ||
+                                    url.contains("music.youtube.com")
+
+                if (!floatingVideosEnabled || !activeVideoCached || !videoPlaying || !isYoutubePage) {
+                    Log.d("FloatingVideo", "PiP blocked because page is not eligible")
+                    return false
+                }
+
                 val success = activity.enterPictureInPictureMode(builder.build())
                 if (success) {
                     Log.d("FloatingVideo", "PiP entered")

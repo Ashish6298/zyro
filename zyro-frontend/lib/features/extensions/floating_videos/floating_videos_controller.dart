@@ -34,6 +34,15 @@ class FloatingVideosController extends ChangeNotifier {
   double _positionY = 100.0;
   
   InAppWebViewController? _webViewController;
+  bool _isYoutubeVideoPlaying = false;
+
+  bool get isYoutubeVideoPlaying => _isYoutubeVideoPlaying;
+  set isYoutubeVideoPlaying(bool value) {
+    if (_isYoutubeVideoPlaying != value) {
+      _isYoutubeVideoPlaying = value;
+      notifyListeners();
+    }
+  }
 
   // --- Cached video dimensions for PiP transition protection ---
   // ignore: unused_field
@@ -519,6 +528,35 @@ class FloatingVideosController extends ChangeNotifier {
     _activeVideo = video;
     _webViewController = controller;
     _playbackRate = video.playbackRate;
+
+    if (controller != null) {
+      final url = video.pageUrl.toLowerCase();
+      final isYoutube = url.contains("youtube.com") ||
+                        url.contains("m.youtube.com") ||
+                        url.contains("youtu.be") ||
+                        url.contains("music.youtube.com");
+      if (isYoutube) {
+        controller.evaluateJavascript(source: """
+          (function() {
+            const video = document.querySelector('video');
+            return !!(video &&
+                   !video.paused &&
+                   !video.ended &&
+                   video.currentTime > 0 &&
+                   video.videoWidth > 0 &&
+                   video.videoHeight > 0);
+          })();
+        """).then((res) {
+          isYoutubeVideoPlaying = res == true;
+        }).catchError((_) {
+          isYoutubeVideoPlaying = false;
+        });
+      } else {
+        isYoutubeVideoPlaying = false;
+      }
+    } else {
+      isYoutubeVideoPlaying = false;
+    }
     
     print("Active video detected");
     print("[FLOATING VIDEO DEBUG] video detected: Title=${video.videoTitle}, "
@@ -599,6 +637,7 @@ class FloatingVideosController extends ChangeNotifier {
     }
     _activeVideo = null;
     _lastKnownIsPlaying = false;
+    isYoutubeVideoPlaying = false;
     updateState(FloatingVideoState.idle);
     FloatingVideoChannel.setVideoPlaying(false);
     notifyListeners();
@@ -609,6 +648,7 @@ class FloatingVideosController extends ChangeNotifier {
     _activeVideo = null;
     _lastKnownIsPlaying = false;
     _pipTransitionStart = null;
+    isYoutubeVideoPlaying = false;
     updateState(FloatingVideoState.idle);
     FloatingVideoChannel.setVideoPlaying(false);
     notifyListeners();
