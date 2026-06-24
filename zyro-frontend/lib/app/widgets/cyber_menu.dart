@@ -12,6 +12,7 @@ import '../../features/download_library/screens/downloads_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../screens/extensions_screen.dart';
 import '../../core/theme/app_colors.dart';
+import '../../features/screenshot_pro/screens/screenshot_pro_sheet.dart';
 
 class CyberMenu extends StatelessWidget {
   const CyberMenu({super.key});
@@ -27,10 +28,17 @@ class CyberMenu extends StatelessWidget {
       backgroundColor: Colors.transparent,
       width: MediaQuery.of(context).size.width * 0.82,
       child: Container(
-        padding: const EdgeInsets.only(left: 20, right: 20, top: 48, bottom: 24),
+        padding: const EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 48,
+          bottom: 24,
+        ),
         decoration: BoxDecoration(
           color: theme.cardColor,
-          borderRadius: const BorderRadius.horizontal(left: Radius.circular(32)),
+          borderRadius: const BorderRadius.horizontal(
+            left: Radius.circular(32),
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(isDark ? 0.54 : 0.08),
@@ -82,9 +90,15 @@ class CyberMenu extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: Icon(LucideIcons.chevronRight, color: theme.colorScheme.onSurface.withOpacity(0.6), size: 20),
+                  icon: Icon(
+                    LucideIcons.chevronRight,
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    size: 20,
+                  ),
                   style: IconButton.styleFrom(
-                    backgroundColor: theme.colorScheme.onSurface.withOpacity(0.04),
+                    backgroundColor: theme.colorScheme.onSurface.withOpacity(
+                      0.04,
+                    ),
                     shape: const CircleBorder(),
                     padding: const EdgeInsets.all(10),
                   ),
@@ -92,7 +106,7 @@ class CyberMenu extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 32),
-            
+
             // Grid section
             Expanded(
               child: GridView.count(
@@ -104,17 +118,28 @@ class CyberMenu extends StatelessWidget {
                 physics: const BouncingScrollPhysics(),
                 children: [
                   MenuCard(
-                    icon: context.watch<BrowserDataManager>().isBookmarked(currentTab?.url ?? '') 
-                        ? LucideIcons.star 
+                    icon:
+                        context.watch<BrowserDataManager>().isBookmarked(
+                          currentTab?.url ?? '',
+                        )
+                        ? LucideIcons.star
                         : LucideIcons.bookmark,
-                    label: context.watch<BrowserDataManager>().isBookmarked(currentTab?.url ?? '')
+                    label:
+                        context.watch<BrowserDataManager>().isBookmarked(
+                          currentTab?.url ?? '',
+                        )
                         ? 'SAVED'
                         : 'BOOKMARK',
                     description: 'Save page to library',
-                    isActive: context.watch<BrowserDataManager>().isBookmarked(currentTab?.url ?? ''),
+                    isActive: context.watch<BrowserDataManager>().isBookmarked(
+                      currentTab?.url ?? '',
+                    ),
                     onPressed: () {
                       if (currentTab != null) {
-                        context.read<BrowserDataManager>().toggleBookmark(currentTab.url, currentTab.title ?? 'New Tab');
+                        context.read<BrowserDataManager>().toggleBookmark(
+                          currentTab.url,
+                          currentTab.title ?? 'New Tab',
+                        );
                       }
                     },
                   ),
@@ -131,13 +156,15 @@ class CyberMenu extends StatelessWidget {
                   MenuCard(
                     icon: LucideIcons.eyeOff,
                     label: 'INCOGNITO MODE',
-                    description: tabManager.isGlobalIncognito ? 'Private browsing active' : 'Private browsing off',
+                    description: tabManager.isGlobalIncognito
+                        ? 'Private browsing active'
+                        : 'Private browsing off',
                     isActive: tabManager.isGlobalIncognito,
                     onPressed: () {
                       final isEnabling = !tabManager.isGlobalIncognito;
                       tabManager.setGlobalIncognito(isEnabling);
                       Navigator.pop(context);
-                      
+
                       if (isEnabling) {
                         _showIncognitoExplanationDialog(context);
                       }
@@ -170,10 +197,14 @@ class CyberMenu extends StatelessWidget {
                     onPressed: () async {
                       final url = await Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const HistoryScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const HistoryScreen(),
+                        ),
                       );
                       if (url != null && url is String) {
-                        currentTab?.controller?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+                        currentTab?.controller?.loadUrl(
+                          urlRequest: URLRequest(url: WebUri(url)),
+                        );
                       }
                       if (context.mounted) Navigator.pop(context);
                     },
@@ -183,12 +214,16 @@ class CyberMenu extends StatelessWidget {
                     label: 'BOOKMARKS',
                     description: 'View saved sites',
                     onPressed: () async {
-                       final url = await Navigator.push(
+                      final url = await Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const BookmarksScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const BookmarksScreen(),
+                        ),
                       );
                       if (url != null && url is String) {
-                        currentTab?.controller?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+                        currentTab?.controller?.loadUrl(
+                          urlRequest: URLRequest(url: WebUri(url)),
+                        );
                       }
                       if (context.mounted) Navigator.pop(context);
                     },
@@ -209,7 +244,25 @@ class CyberMenu extends StatelessWidget {
                     description: 'Locate site terms',
                     onPressed: () {
                       Navigator.pop(context);
-                      Provider.of<TabManager>(context, listen: false).toggleFindInPage();
+                      Provider.of<TabManager>(
+                        context,
+                        listen: false,
+                      ).toggleFindInPage();
+                    },
+                  ),
+                  MenuCard(
+                    icon: LucideIcons.camera,
+                    label: 'SCREENSHOT PRO',
+                    description: 'Full page capture',
+                    onPressed: () {
+                      if (currentTab == null) return;
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ScreenshotProSheet(tab: currentTab),
+                        ),
+                      );
                     },
                   ),
                   MenuCard(
@@ -220,7 +273,9 @@ class CyberMenu extends StatelessWidget {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const DownloadsScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const DownloadsScreen(),
+                        ),
                       );
                     },
                   ),
@@ -231,7 +286,9 @@ class CyberMenu extends StatelessWidget {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
+                        ),
                       );
                     },
                   ),
@@ -242,7 +299,9 @@ class CyberMenu extends StatelessWidget {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const ExtensionsScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const ExtensionsScreen(),
+                        ),
                       );
                     },
                   ),
@@ -301,7 +360,9 @@ class _MenuCardState extends State<MenuCard> {
       descColor = activeColor.withOpacity(0.7);
     } else {
       cardColor = isDark ? theme.cardColor.withOpacity(0.5) : theme.cardColor;
-      borderColor = isDark ? theme.dividerColor.withOpacity(0.1) : theme.dividerColor.withOpacity(0.5);
+      borderColor = isDark
+          ? theme.dividerColor.withOpacity(0.1)
+          : theme.dividerColor.withOpacity(0.5);
       iconColor = theme.colorScheme.onSurface;
       textColor = theme.colorScheme.onSurface.withOpacity(0.9);
       descColor = theme.colorScheme.onSurface.withOpacity(0.4);
@@ -326,7 +387,9 @@ class _MenuCardState extends State<MenuCard> {
             border: Border.all(color: borderColor, width: 1.2),
             boxShadow: [
               BoxShadow(
-                color: isDark ? Colors.black.withOpacity(0.15) : Colors.black.withOpacity(0.02),
+                color: isDark
+                    ? Colors.black.withOpacity(0.15)
+                    : Colors.black.withOpacity(0.02),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -362,16 +425,12 @@ class _MenuCardState extends State<MenuCard> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: widget.isActive 
-                            ? activeColor.withOpacity(0.1) 
+                        color: widget.isActive
+                            ? activeColor.withOpacity(0.1)
                             : theme.colorScheme.onSurface.withOpacity(0.04),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        widget.icon,
-                        color: iconColor,
-                        size: 22,
-                      ),
+                      child: Icon(widget.icon, color: iconColor, size: 22),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -423,7 +482,10 @@ void _showIncognitoExplanationDialog(BuildContext context) {
             const SizedBox(width: 10),
             Text(
               'Incognito Mode Enabled',
-              style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
+              style: GoogleFonts.outfit(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
           ],
         ),
@@ -433,25 +495,45 @@ void _showIncognitoExplanationDialog(BuildContext context) {
           children: [
             Text(
               'You have switched to a private browsing session. Zyro Browser will protect your privacy with the following rules:',
-              style: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w500),
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             const SizedBox(height: 12),
-            _buildBulletPoint(theme, 'Browsing history and search history will not be saved.'),
-            _buildBulletPoint(theme, 'Cookies and site storage are cleared when closed.'),
-            _buildBulletPoint(theme, 'Form data and inputs will not be remembered.'),
-            _buildBulletPoint(theme, 'Bookmarks and downloads you manually save will still remain.'),
+            _buildBulletPoint(
+              theme,
+              'Browsing history and search history will not be saved.',
+            ),
+            _buildBulletPoint(
+              theme,
+              'Cookies and site storage are cleared when closed.',
+            ),
+            _buildBulletPoint(
+              theme,
+              'Form data and inputs will not be remembered.',
+            ),
+            _buildBulletPoint(
+              theme,
+              'Bookmarks and downloads you manually save will still remain.',
+            ),
           ],
         ),
         actions: [
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: theme.colorScheme.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Got it',
-              style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
+              style: GoogleFonts.outfit(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -471,7 +553,10 @@ Widget _buildBulletPoint(ThemeData theme, String text) {
         Expanded(
           child: Text(
             text,
-            style: GoogleFonts.outfit(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.8)),
+            style: GoogleFonts.outfit(
+              fontSize: 12,
+              color: theme.colorScheme.onSurface.withOpacity(0.8),
+            ),
           ),
         ),
       ],

@@ -6,11 +6,15 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.graphics.pdf.PdfDocument
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
+import android.view.View
+import android.view.ViewGroup
+import android.webkit.WebView
 
 class MainActivity : FlutterActivity() {
     private val channelName = "zyro/downloads"
@@ -24,6 +28,15 @@ class MainActivity : FlutterActivity() {
                     "enqueueDownload" -> enqueueDownload(call, result)
                     "queryDownload" -> queryDownload(call, result)
                     else -> result.notImplemented()
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "zyro/screenshot_pro")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "exportWebViewPdf") {
+                    exportWebViewPdf(call.argument<String>("title") ?: "Zyro page", result)
+                } else {
+                    result.notImplemented()
                 }
             }
 
@@ -149,6 +162,45 @@ class MainActivity : FlutterActivity() {
         } catch (e: Exception) {
             result.error("ENQUEUE_FAILED", e.message, null)
         }
+    }
+
+    private fun exportWebViewPdf(title: String, result: MethodChannel.Result) {
+        val webView = findWebView(window.decorView)
+        if (webView == null) {
+            result.error("WEBVIEW_UNAVAILABLE", "Active WebView is unavailable", null)
+            return
+        }
+        val folder = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "zyro/screenshots")
+        if (!folder.exists() && !folder.mkdirs()) {
+            result.error("STORAGE_UNAVAILABLE", "Unable to create screenshots folder", null)
+            return
+        }
+        val safeTitle = title.replace(Regex("[^A-Za-z0-9._-]"), "_").take(48)
+        val fileName = "zyro_page_${safeTitle}_${System.currentTimeMillis()}.pdf"
+        val output = File(folder, fileName)
+        try {
+            val width = webView.width.coerceAtLeast(1)
+            val height = webView.height.coerceAtLeast(1)
+            val document = PdfDocument()
+            val page = document.startPage(PdfDocument.PageInfo.Builder(width, height, 1).create())
+            webView.draw(page.canvas)
+            document.finishPage(page)
+            output.outputStream().use { document.writeTo(it) }
+            document.close()
+            result.success(mapOf("filePath" to output.absolutePath, "fileName" to fileName))
+        } catch (error: Exception) {
+            result.error("PDF_EXPORT_FAILED", error.message ?: "PDF export failed", null)
+        }
+    }
+
+    private fun findWebView(view: View): WebView? {
+        if (view is WebView) return view
+        if (view is ViewGroup) {
+            for (index in 0 until view.childCount) {
+                findWebView(view.getChildAt(index))?.let { return it }
+            }
+        }
+        return null
     }
 
     private fun queryDownload(call: MethodCall, result: MethodChannel.Result) {
