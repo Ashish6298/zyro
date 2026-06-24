@@ -77,13 +77,7 @@ class FullPageCaptureService {
         img.compositeImage(output, portion, dstX: 0, dstY: start);
       }
       if (kDebugMode) debugPrint('[SCREENSHOT PRO] Image stitching completed');
-      return _screenshotService.savePng(
-        Uint8List.fromList(img.encodePng(output)),
-        title: title,
-        url: url,
-        prefix: 'zyro_fullpage',
-        type: 'full_page',
-      );
+      return ScreenshotCaptureResult(bytes: img.encodePng(output), filePath: '', fileName: '', mimeType: 'image/png', captureType: 'full_page', title: title, url: url, createdAt: DateTime.now(), fileSize: 0);
     } finally {
       await _style(controller, false);
       await _scroll(controller, originalY);

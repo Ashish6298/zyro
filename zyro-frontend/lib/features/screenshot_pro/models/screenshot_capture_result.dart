@@ -1,4 +1,5 @@
 class ScreenshotCaptureResult {
+  final List<int>? bytes;
   final String filePath;
   final String fileName;
   final String mimeType;
@@ -9,6 +10,7 @@ class ScreenshotCaptureResult {
   final int fileSize;
 
   const ScreenshotCaptureResult({
+    this.bytes,
     required this.filePath,
     required this.fileName,
     required this.mimeType,
