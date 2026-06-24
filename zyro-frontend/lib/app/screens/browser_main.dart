@@ -13,8 +13,6 @@ import '../widgets/glass_container.dart';
 import 'tab_switcher.dart';
 
 import '../../features/video_downloader/widgets/floating_download_button.dart';
-import '../../features/extensions/floating_videos/floating_videos_controller.dart';
-import '../../features/extensions/floating_videos/widgets/pip_video_only_view.dart';
 
 class BrowserMainScreen extends StatefulWidget {
   const BrowserMainScreen({super.key});
@@ -26,7 +24,6 @@ class BrowserMainScreen extends StatefulWidget {
 class _BrowserMainScreenState extends State<BrowserMainScreen> {
   final ScriptEngine _scriptEngine = ScriptEngine();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  bool? _lastPipState;
 
   void _showCyberMenu(BuildContext context) {
     _scaffoldKey.currentState?.openEndDrawer();
@@ -34,32 +31,27 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final floatingCtrl = context.watch<FloatingVideosController>();
-    if (floatingCtrl.renderMode == BrowserRenderMode.pipPreparing ||
-        floatingCtrl.renderMode == BrowserRenderMode.pipActive) {
-      return PipVideoOnlyView(scriptEngine: _scriptEngine);
-    }
-
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-
-    if (false != _lastPipState) {
-      _lastPipState = false;
-    }
 
     return Consumer2<TabManager, BrowserDataManager>(
       builder: (context, tabManager, dataManager, child) {
         // Listen for finished downloads
         if (dataManager.lastFinishedDownload != null) {
           final item = dataManager.lastFinishedDownload!;
-          dataManager.lastFinishedDownload = null; // Clear to prevent multiple notifications
-          
+          dataManager.lastFinishedDownload =
+              null; // Clear to prevent multiple notifications
+
           WidgetsBinding.instance.addPostFrameCallback((_) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Row(
                   children: [
-                    const Icon(LucideIcons.checkCircle, color: Colors.green, size: 20),
+                    const Icon(
+                      LucideIcons.checkCircle,
+                      color: Colors.green,
+                      size: 20,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -68,11 +60,19 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
                         children: [
                           Text(
                             'DOWNLOAD COMPLETE',
-                            style: GoogleFonts.outfit(color: theme.colorScheme.primary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2),
+                            style: GoogleFonts.outfit(
+                              color: theme.colorScheme.primary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2,
+                            ),
                           ),
                           Text(
                             '${item.title} saved to device.',
-                            style: GoogleFonts.outfit(color: theme.colorScheme.onSurface, fontSize: 12),
+                            style: GoogleFonts.outfit(
+                              color: theme.colorScheme.onSurface,
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ),
@@ -82,7 +82,9 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
                 backgroundColor: theme.cardColor,
                 behavior: SnackBarBehavior.floating,
                 duration: const Duration(seconds: 4),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             );
           });
@@ -91,9 +93,10 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
         final currentTab = tabManager.currentTab;
 
         if (currentTab == null) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
-
 
         return Scaffold(
           key: _scaffoldKey,
@@ -106,7 +109,8 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
                 Column(
                   children: [
                     GlassAppBar(tab: currentTab),
-                    if (tabManager.isFindingInPage) _buildFindBar(tabManager, theme),
+                    if (tabManager.isFindingInPage)
+                      _buildFindBar(tabManager, theme),
                     Expanded(
                       child: IndexedStack(
                         index: tabManager.currentIndex,
@@ -133,7 +137,7 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
 
   Widget _buildBottomNav(TabManager tabManager, ThemeData theme, bool isDark) {
     final currentTab = tabManager.currentTab!;
-    
+
     return Container(
       padding: const EdgeInsets.only(bottom: 32, left: 24, right: 24, top: 4),
       child: GlassContainer(
@@ -144,7 +148,9 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: theme.dividerColor.withOpacity(isDark ? 0.05 : 0.3)),
+            border: Border.all(
+              color: theme.dividerColor.withOpacity(isDark ? 0.05 : 0.3),
+            ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -171,7 +177,9 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const TabSwitcherScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const TabSwitcherScreen(),
+                    ),
                   );
                 },
               ),
@@ -187,15 +195,35 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
     );
   }
 
-  Widget _buildNavButton(ThemeData theme, {required IconData icon, required VoidCallback onPressed, String? badge}) {
+  Widget _buildNavButton(
+    ThemeData theme, {
+    required IconData icon,
+    required VoidCallback onPressed,
+    String? badge,
+  }) {
     return IconButton(
-      icon: badge != null 
+      icon: badge != null
           ? Badge(
-              label: Text(badge, style: GoogleFonts.outfit(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white)),
+              label: Text(
+                badge,
+                style: GoogleFonts.outfit(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
               backgroundColor: theme.colorScheme.primary,
-              child: Icon(icon, color: theme.colorScheme.onBackground.withOpacity(0.6), size: 20),
+              child: Icon(
+                icon,
+                color: theme.colorScheme.onBackground.withOpacity(0.6),
+                size: 20,
+              ),
             )
-          : Icon(icon, color: theme.colorScheme.onBackground.withOpacity(0.6), size: 20),
+          : Icon(
+              icon,
+              color: theme.colorScheme.onBackground.withOpacity(0.6),
+              size: 20,
+            ),
       onPressed: () {
         HapticFeedback.lightImpact();
         onPressed();
@@ -237,7 +265,9 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
   Widget _buildFindBar(TabManager tabManager, ThemeData theme) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: theme.brightness == Brightness.dark ? Colors.black26 : Colors.black12,
+      color: theme.brightness == Brightness.dark
+          ? Colors.black26
+          : Colors.black12,
       child: GlassContainer(
         borderRadius: 12,
         opacity: 0.1,
@@ -245,15 +275,25 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Icon(LucideIcons.search, color: theme.colorScheme.primary, size: 18),
+              child: Icon(
+                LucideIcons.search,
+                color: theme.colorScheme.primary,
+                size: 18,
+              ),
             ),
             Expanded(
               child: TextField(
                 autofocus: true,
-                style: GoogleFonts.outfit(color: theme.colorScheme.onBackground, fontSize: 14),
+                style: GoogleFonts.outfit(
+                  color: theme.colorScheme.onBackground,
+                  fontSize: 14,
+                ),
                 decoration: InputDecoration(
                   hintText: 'FIND IN PAGE...',
-                  hintStyle: GoogleFonts.outfit(color: theme.colorScheme.onBackground.withOpacity(0.3), fontSize: 12),
+                  hintStyle: GoogleFonts.outfit(
+                    color: theme.colorScheme.onBackground.withOpacity(0.3),
+                    fontSize: 12,
+                  ),
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
@@ -265,7 +305,11 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
               ),
             ),
             IconButton(
-              icon: Icon(LucideIcons.x, color: theme.colorScheme.onBackground.withOpacity(0.4), size: 18),
+              icon: Icon(
+                LucideIcons.x,
+                color: theme.colorScheme.onBackground.withOpacity(0.4),
+                size: 18,
+              ),
               onPressed: () {
                 tabManager.currentTab?.controller?.clearMatches();
                 tabManager.toggleFindInPage();

@@ -16,13 +16,15 @@ class ExtensionManager extends ChangeNotifier {
   }
 
   Future<void> _init() async {
+    await ExtensionStorageService.removeFloatingVideosState();
     final savedStates = await ExtensionStorageService.loadExtensionStates();
 
     final List<ExtensionModel> defaults = [
       ExtensionModel(
         id: 'ad_blocker_downloader',
         name: 'Ad Blocker & Downloader',
-        description: 'Blocks ads and detects/downloads videos on YouTube and other websites.',
+        description:
+            'Blocks ads and detects/downloads videos on YouTube and other websites.',
         version: '1.0.0',
         icon: LucideIcons.shieldAlert,
         isEnabled: true,
@@ -33,14 +35,16 @@ class ExtensionManager extends ChangeNotifier {
       ExtensionModel(
         id: 'dev_tools',
         name: 'Dev Tools',
-        description: 'Developer tools including element inspector, console, network logging, and storage explorer.',
+        description:
+            'Developer tools including element inspector, console, network logging, and storage explorer.',
         version: '1.0.0',
         icon: LucideIcons.code,
       ),
       ExtensionModel(
         id: 'background_player',
         name: 'Background Player',
-        description: 'Enables background media playback with system notification controls.',
+        description:
+            'Enables background media playback with system notification controls.',
         version: '1.0.0',
         icon: LucideIcons.playCircle,
       ),
@@ -58,13 +62,6 @@ class ExtensionManager extends ChangeNotifier {
         version: '0.9.5',
         icon: LucideIcons.key,
       ),
-      ExtensionModel(
-        id: 'floating_videos',
-        name: 'Floating Videos',
-        description: 'Lets you keep videos playing in a movable mini-player while browsing.',
-        version: '1.0.0',
-        icon: LucideIcons.screenShare,
-      ),
     ];
 
     if (savedStates.isEmpty) {
@@ -76,11 +73,17 @@ class ExtensionManager extends ChangeNotifier {
           _availableExtensions.add(ext);
         }
       }
-      await ExtensionStorageService.saveExtensionStates([..._installedExtensions, ..._availableExtensions]);
+      await ExtensionStorageService.saveExtensionStates([
+        ..._installedExtensions,
+        ..._availableExtensions,
+      ]);
     } else {
       // Merge saved states with default definitions
       for (var def in defaults) {
-        final saved = savedStates.firstWhere((s) => s['id'] == def.id, orElse: () => {});
+        final saved = savedStates.firstWhere(
+          (s) => s['id'] == def.id,
+          orElse: () => {},
+        );
         if (saved.isNotEmpty) {
           final ext = ExtensionModel.fromMap(saved);
           final mergedExt = ExtensionModel(
@@ -124,12 +127,19 @@ class ExtensionManager extends ChangeNotifier {
         ext.lastDisabledAt = DateTime.now();
         ext.currentState = 'inactive';
       }
-      
-      ExtensionStorageService.saveExtensionStates([..._installedExtensions, ..._availableExtensions]);
+
+      ExtensionStorageService.saveExtensionStates([
+        ..._installedExtensions,
+        ..._availableExtensions,
+      ]);
       notifyListeners();
-      
+
       // Trigger user manual toggle notification
-      ExtensionNotificationService.showToggleNotification(ext.name, ext.id, ext.isEnabled);
+      ExtensionNotificationService.showToggleNotification(
+        ext.name,
+        ext.id,
+        ext.isEnabled,
+      );
     }
   }
 
@@ -143,11 +153,14 @@ class ExtensionManager extends ChangeNotifier {
       extension.isEnabled = false;
       extension.downloadedAt = DateTime.now();
       extension.updatedAt = DateTime.now();
-      
+
       _installedExtensions.add(extension);
       _availableExtensions.removeWhere((e) => e.id == extension.id);
-      
-      ExtensionStorageService.saveExtensionStates([..._installedExtensions, ..._availableExtensions]);
+
+      ExtensionStorageService.saveExtensionStates([
+        ..._installedExtensions,
+        ..._availableExtensions,
+      ]);
       notifyListeners();
     }
   }
@@ -160,13 +173,16 @@ class ExtensionManager extends ChangeNotifier {
       ext.isEnabled = false;
       ext.currentState = 'inactive';
       ext.updatedAt = DateTime.now();
-      
+
       _availableExtensions.add(ext);
       _installedExtensions.removeAt(index);
-      
-      ExtensionStorageService.saveExtensionStates([..._installedExtensions, ..._availableExtensions]);
+
+      ExtensionStorageService.saveExtensionStates([
+        ..._installedExtensions,
+        ..._availableExtensions,
+      ]);
       notifyListeners();
-      
+
       // Trigger notification
       ExtensionNotificationService.showRemoveNotification(ext.name);
     }

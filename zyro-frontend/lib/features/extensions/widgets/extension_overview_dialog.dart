@@ -20,75 +20,82 @@ class ExtensionOverviewDetails {
 
   static const Map<String, ExtensionOverviewDetails> metadata = {
     'ad_blocker_downloader': ExtensionOverviewDetails(
-      description: 'Blocks intrusive ads/trackers and detects downloadable videos on YouTube and standard web pages.',
+      description:
+          'Blocks intrusive ads/trackers and detects downloadable videos on YouTube and standard web pages.',
       features: [
         'Advanced ad-blocking scripts matching web headers',
         'Automatic media stream link sniffer',
         'Floating quick-download overlay on detected videos',
-        'High speed local download manager support'
+        'High speed local download manager support',
       ],
-      benefits: 'Reduces loading times, saves network data bandwidth, and enables easy offline video playback.',
-      permissionsSummary: 'Requires permissions to modify page network contents and write video files to device storage.',
-      privacyNotes: 'Local processing only. We do not transmit web URLs or search history to external servers.',
+      benefits:
+          'Reduces loading times, saves network data bandwidth, and enables easy offline video playback.',
+      permissionsSummary:
+          'Requires permissions to modify page network contents and write video files to device storage.',
+      privacyNotes:
+          'Local processing only. We do not transmit web URLs or search history to external servers.',
     ),
     'dev_tools': ExtensionOverviewDetails(
-      description: 'Developer utilities mimicking PC browser inspector toolsets directly on your mobile device.',
+      description:
+          'Developer utilities mimicking PC browser inspector toolsets directly on your mobile device.',
       features: [
         'Inspect and highlight active DOM layout nodes',
         'View console warnings, errors, and log prints',
         'Trace web request links and network status codes',
-        'Access and inspect localStorage/sessionStorage keys'
+        'Access and inspect localStorage/sessionStorage keys',
       ],
-      benefits: 'Enables debugging, styling adjustments, and network logging on the go.',
-      permissionsSummary: 'Requires permission to read page elements and web consoles upon request.',
-      privacyNotes: 'No data is uploaded. Network and console logs exist only in-memory and clear on tab close.',
+      benefits:
+          'Enables debugging, styling adjustments, and network logging on the go.',
+      permissionsSummary:
+          'Requires permission to read page elements and web consoles upon request.',
+      privacyNotes:
+          'No data is uploaded. Network and console logs exist only in-memory and clear on tab close.',
     ),
     'background_player': ExtensionOverviewDetails(
-      description: 'Enables background audio/video playback with system notification controls.',
+      description:
+          'Enables background audio/video playback with system notification controls.',
       features: [
         'Continue listening to videos/music when app is minimized',
         'System lock-screen media player notification integrations',
         'Play, Pause, Next, and Previous media session controls',
-        'Resilient background service handling'
+        'Resilient background service handling',
       ],
-      benefits: 'Enables seamless music and video streaming in the background while multitasking.',
-      permissionsSummary: 'Requires permissions to show standard media notifications and run a foreground media service.',
-      privacyNotes: 'Only tracks active media state in-memory (title, website, play status) to populate controls.',
+      benefits:
+          'Enables seamless music and video streaming in the background while multitasking.',
+      permissionsSummary:
+          'Requires permissions to show standard media notifications and run a foreground media service.',
+      privacyNotes:
+          'Only tracks active media state in-memory (title, website, play status) to populate controls.',
     ),
     'dark_mode': ExtensionOverviewDetails(
-      description: 'Injects smart, eye-friendly dark stylesheets onto every website.',
+      description:
+          'Injects smart, eye-friendly dark stylesheets onto every website.',
       features: [
         'Inverts background colors while keeping image integrity',
         'Customizable contrast and brightness parameters',
-        'Reduces eye strain under low-light configurations'
+        'Reduces eye strain under low-light configurations',
       ],
-      benefits: 'Improves reading comfort and battery efficiency on OLED screens.',
-      permissionsSummary: 'Requires permission to manipulate page stylesheet styling parameters.',
-      privacyNotes: 'All stylesheet operations occur locally on the rendering engine.',
+      benefits:
+          'Improves reading comfort and battery efficiency on OLED screens.',
+      permissionsSummary:
+          'Requires permission to manipulate page stylesheet styling parameters.',
+      privacyNotes:
+          'All stylesheet operations occur locally on the rendering engine.',
     ),
     'password_gen': ExtensionOverviewDetails(
-      description: 'Generates secure cryptographically strong password strings.',
+      description:
+          'Generates secure cryptographically strong password strings.',
       features: [
         'Customizable password length configurations',
         'Toggle uppercase, digits, symbols, and specials',
-        'Quick-copy output actions for rapid logins'
+        'Quick-copy output actions for rapid logins',
       ],
-      benefits: 'Encourages account safety by generating secure unique password variables.',
-      permissionsSummary: 'Requires clipboard access to paste generated passwords.',
-      privacyNotes: 'Passwords are generated strictly in local memory and are never saved or uploaded.',
-    ),
-    'floating_videos': ExtensionOverviewDetails(
-      description: 'Floating Videos lets you keep videos playing in a movable mini-player while browsing.',
-      features: [
-        'Mini-player resize capability (pinch or drag edges)',
-        'Adjustable opacity / transparency slider',
-        'Speed control presets (0.5x, 1x, 1.25x, 1.5x, 2x, 3x)',
-        'Play/Pause & Dismiss gestures',
-        'Automatic Picture-in-Picture on app minimize'
-      ],
-      benefits: 'Enables multi-tasking and watching video content while reading articles or checking other tabs.',
-      permissionsSummary: 'Requires page content access to detect active video players and system overlays.',
-      privacyNotes: 'This extension detects active video elements on webpages only while enabled and does not collect personal browsing data.',
+      benefits:
+          'Encourages account safety by generating secure unique password variables.',
+      permissionsSummary:
+          'Requires clipboard access to paste generated passwords.',
+      privacyNotes:
+          'Passwords are generated strictly in local memory and are never saved or uploaded.',
     ),
   };
 }
@@ -107,14 +114,17 @@ class ExtensionOverviewDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
-    final details = ExtensionOverviewDetails.metadata[extension.id] ?? ExtensionOverviewDetails(
-      description: extension.description,
-      features: const ['Standard extension capabilities'],
-      benefits: 'Enhances Zyro Browser functions.',
-      permissionsSummary: 'Standard page script permissions.',
-      privacyNotes: 'All extension scripts execute locally inside your sandbox.',
-    );
+
+    final details =
+        ExtensionOverviewDetails.metadata[extension.id] ??
+        ExtensionOverviewDetails(
+          description: extension.description,
+          features: const ['Standard extension capabilities'],
+          benefits: 'Enhances Zyro Browser functions.',
+          permissionsSummary: 'Standard page script permissions.',
+          privacyNotes:
+              'All extension scripts execute locally inside your sandbox.',
+        );
 
     return Dialog(
       backgroundColor: theme.cardColor,
@@ -172,7 +182,7 @@ class ExtensionOverviewDialog extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 20),
-              
+
               // Description
               Text(
                 details.description,
@@ -183,7 +193,7 @@ class ExtensionOverviewDialog extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              
+
               // Key Features Header
               Text(
                 'KEY FEATURES',
@@ -195,34 +205,36 @@ class ExtensionOverviewDialog extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              
+
               // Features list
-              ...details.features.map((feat) => Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          LucideIcons.check,
-                          color: theme.colorScheme.primary,
-                          size: 14,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            feat,
-                            style: GoogleFonts.outfit(
-                              fontSize: 12,
-                              color: theme.colorScheme.onSurface.withOpacity(0.6),
-                              height: 1.3,
-                            ),
+              ...details.features.map(
+                (feat) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        LucideIcons.check,
+                        color: theme.colorScheme.primary,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          feat,
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                            height: 1.3,
                           ),
                         ),
-                      ],
-                    ),
-                  )),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 16),
-              
+
               // How it helps
               Text(
                 'BENEFIT',
@@ -243,7 +255,7 @@ class ExtensionOverviewDialog extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Permissions Summary
               Text(
                 'PERMISSIONS REQUIRED',
@@ -264,16 +276,20 @@ class ExtensionOverviewDialog extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Privacy Note Card
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isDark ? theme.colorScheme.surface.withOpacity(0.3) : theme.colorScheme.surface,
+                  color: isDark
+                      ? theme.colorScheme.surface.withOpacity(0.3)
+                      : theme.colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isDark ? theme.dividerColor.withOpacity(0.04) : theme.dividerColor.withOpacity(0.2),
+                    color: isDark
+                        ? theme.dividerColor.withOpacity(0.04)
+                        : theme.dividerColor.withOpacity(0.2),
                   ),
                 ),
                 child: Row(
@@ -302,7 +318,9 @@ class ExtensionOverviewDialog extends StatelessWidget {
                             details.privacyNotes,
                             style: GoogleFonts.outfit(
                               fontSize: 10,
-                              color: theme.colorScheme.onSurface.withOpacity(0.5),
+                              color: theme.colorScheme.onSurface.withOpacity(
+                                0.5,
+                              ),
                               height: 1.3,
                             ),
                           ),
@@ -313,7 +331,7 @@ class ExtensionOverviewDialog extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               // Actions
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -333,8 +351,13 @@ class ExtensionOverviewDialog extends StatelessWidget {
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: theme.colorScheme.primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
                     ),
                     onPressed: () {
                       Navigator.pop(context);

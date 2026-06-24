@@ -1,10 +1,6 @@
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 import 'platform/background_player_channel.dart';
-import '../../../core/extension_manager.dart';
-import '../../../core/globals.dart';
-import '../floating_videos/floating_videos_controller.dart';
 
 class BackgroundPlayerService {
   static InAppWebViewController? _activeController;
@@ -26,7 +22,10 @@ class BackgroundPlayerService {
   static String? sourceWebsite;
   static String? nextTitle;
 
-  static void setActiveController(String tabId, InAppWebViewController? controller) {
+  static void setActiveController(
+    String tabId,
+    InAppWebViewController? controller,
+  ) {
     _activeTabId = tabId;
     _activeController = controller;
     if (controller != null) {
@@ -36,32 +35,39 @@ class BackgroundPlayerService {
 
   static void initializeChannelHandler() {
     BackgroundPlayerChannel.setMethodCallHandler((MethodCall call) async {
-      print("[BACKGROUND PLAYER SERVICE] Received method call: ${call.method} from native platform.");
+      print(
+        "[BACKGROUND PLAYER SERVICE] Received method call: ${call.method} from native platform.",
+      );
       if (_activeController == null) return;
-      
+
       switch (call.method) {
         case "play":
-          await _activeController?.evaluateJavascript(source: """
+          await _activeController?.evaluateJavascript(
+            source: """
             (function() {
               var media = document.querySelector('video, audio');
               if (media) {
                 media.play();
               }
             })();
-          """);
+          """,
+          );
           break;
         case "pause":
-          await _activeController?.evaluateJavascript(source: """
+          await _activeController?.evaluateJavascript(
+            source: """
             (function() {
               var media = document.querySelector('video, audio');
               if (media) {
                 media.pause();
               }
             })();
-          """);
+          """,
+          );
           break;
         case "next":
-          await _activeController?.evaluateJavascript(source: """
+          await _activeController?.evaluateJavascript(
+            source: """
             (function() {
               var nextBtn = document.querySelector('.ytp-next-button') || 
                             document.querySelector('[data-testid="control-button-skip-forward"]') || 
@@ -72,10 +78,12 @@ class BackgroundPlayerService {
                 nextBtn.click();
               }
             })();
-          """);
+          """,
+          );
           break;
         case "previous":
-          await _activeController?.evaluateJavascript(source: """
+          await _activeController?.evaluateJavascript(
+            source: """
             (function() {
               var prevBtn = document.querySelector('.ytp-prev-button') || 
                             document.querySelector('[data-testid="control-button-skip-back"]') || 
@@ -91,21 +99,25 @@ class BackgroundPlayerService {
                 }
               }
             })();
-          """);
+          """,
+          );
           break;
         case "seekTo":
           final args = Map<String, dynamic>.from(call.arguments);
           final posMs = args['positionMs'] as int?;
           if (posMs != null) {
             final posSec = posMs / 1000.0;
-            await _activeController?.evaluateJavascript(source: """
+            await _activeController?.evaluateJavascript(
+              source:
+                  """
               (function() {
                 var media = document.querySelector('video, audio');
                 if (media) {
                   media.currentTime = $posSec;
                 }
               })();
-            """);
+            """,
+            );
           }
           break;
       }
@@ -130,7 +142,9 @@ class BackgroundPlayerService {
         sourceWebsite = data['sourceWebsite'] ?? '';
         nextTitle = data['nextTitle'] ?? '';
 
-        print("[BACKGROUND PLAYER EVENT] title: $title, source: $sourceWebsite, isPlaying: $isPlaying");
+        print(
+          "[BACKGROUND PLAYER EVENT] title: $title, source: $sourceWebsite, isPlaying: $isPlaying",
+        );
 
         if (isEnabled) {
           if (!_serviceStarted) {
@@ -158,8 +172,11 @@ class BackgroundPlayerService {
     );
   }
 
-  static Future<void> injectMediaDetector(InAppWebViewController controller) async {
-    await controller.evaluateJavascript(source: """
+  static Future<void> injectMediaDetector(
+    InAppWebViewController controller,
+  ) async {
+    await controller.evaluateJavascript(
+      source: """
       (function() {
         try {
           Object.defineProperty(document, 'hidden', { value: false, writable: false });
@@ -252,7 +269,8 @@ class BackgroundPlayerService {
           });
         }, 1000);
       })();
-    """);
+    """,
+    );
   }
 
   static void handleTabClosed(String closedTabId) {
@@ -269,38 +287,9 @@ class BackgroundPlayerService {
   static void handleAppMinimized(bool enabled) {
     isEnabled = enabled;
     _isBackground = true;
-    print("[BACKGROUND PLAYER] handleAppMinimized. isEnabled: $isEnabled, isPlaying: $isPlaying");
-    
-    // Check if Floating Videos is handling PiP
-    bool isPipHandling = false;
-    try {
-      final ctx = navigatorKey.currentContext;
-      if (ctx != null) {
-        final extMgr = Provider.of<ExtensionManager>(ctx, listen: false);
-        final isFloatingEnabled = extMgr.isExtensionEnabled('floating_videos');
-        if (isFloatingEnabled) {
-          final floatCtrl = Provider.of<FloatingVideosController>(ctx, listen: false);
-          final activeVideo = floatCtrl.activeVideo;
-          if (activeVideo != null && activeVideo.isPlaying && !activeVideo.isAd && activeVideo.duration > 0 && activeVideo.isVisible) {
-            isPipHandling = true;
-            print("[FLOATING VIDEO DEBUG] Background Player did not block PiP. WebView pause skipped for PiP.");
-          }
-        }
-      }
-    } catch (e) {
-      print("Error checking FloatingVideos in BackgroundPlayerService: $e");
-    }
-
-    if (isPipHandling) {
-      // WebView pause is skipped. Keep controls active if Background Player is enabled.
-      if (isEnabled) {
-        print("[BACKGROUND PLAYER] Keeping notification controls active during PiP.");
-      } else {
-        BackgroundPlayerChannel.stopService();
-        _serviceStarted = false;
-      }
-      return;
-    }
+    print(
+      "[BACKGROUND PLAYER] handleAppMinimized. isEnabled: $isEnabled, isPlaying: $isPlaying",
+    );
 
     if (!isEnabled) {
       BackgroundPlayerChannel.stopService();
@@ -308,7 +297,9 @@ class BackgroundPlayerService {
     } else {
       Future.delayed(const Duration(milliseconds: 100), () {
         _activeController?.resume();
-        print("[BACKGROUND PLAYER] Called activeController.resume() to keep playback alive in background.");
+        print(
+          "[BACKGROUND PLAYER] Called activeController.resume() to keep playback alive in background.",
+        );
       });
     }
   }

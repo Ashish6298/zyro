@@ -20,10 +20,6 @@ import '../features/extensions/dev_tools/dev_tools_models.dart';
 import '../features/extensions/background_player/background_player_service.dart';
 import '../features/extensions/ad_blocker/services/ad_block_service.dart';
 import '../features/extensions/ad_blocker/services/ad_block_stats_service.dart';
-import '../features/extensions/floating_videos/floating_video_detector.dart';
-import '../features/extensions/floating_videos/floating_videos_service.dart';
-import '../features/extensions/floating_videos/floating_videos_controller.dart';
-import '../features/extensions/floating_videos/platform/floating_video_channel.dart';
 
 class WebViewWrapper extends StatefulWidget {
   final TabModel tab;
@@ -39,24 +35,16 @@ class WebViewWrapper extends StatefulWidget {
   State<WebViewWrapper> createState() => _WebViewWrapperState();
 }
 
-class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObserver {
+class _WebViewWrapperState extends State<WebViewWrapper> {
   bool _lastDownloaderState = false;
-  bool? _lastFloatingVideoState;
 
   // Cached providers to avoid looking up deactivated widget ancestors
   TabManager? _tabManager;
   ExtensionManager? _extensionManager;
   BrowserDataManager? _dataManager;
-  FloatingVideosController? _floatingCtrl;
   DownloadController? _downloadCtrl;
   DevToolsController? _devToolsCtrl;
   AdBlockStatsService? _adBlockStatsService;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
 
   @override
   void didChangeDependencies() {
@@ -64,7 +52,6 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
     _tabManager = context.read<TabManager>();
     _extensionManager = context.read<ExtensionManager>();
     _dataManager = context.read<BrowserDataManager>();
-    _floatingCtrl = context.read<FloatingVideosController>();
     _downloadCtrl = context.read<DownloadController>();
     _devToolsCtrl = context.read<DevToolsController>();
     _adBlockStatsService = context.read<AdBlockStatsService>();
@@ -72,170 +59,48 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     BackgroundPlayerService.handleTabClosed(widget.tab.id);
     super.dispose();
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
-      _checkAndTriggerPiP();
-    }
-  }
-
-  bool shouldEnterFloatingVideoMode() {
-    final currentTab = widget.tab;
-    final url = currentTab.url.toLowerCase();
-
-    final isYoutube =
-        url.contains("youtube.com") ||
-        url.contains("m.youtube.com") ||
-        url.contains("youtu.be") ||
-        url.contains("music.youtube.com");
-
-    final hasActiveVideo = _floatingCtrl?.activeVideo != null;
-    final isPlaying = _floatingCtrl?.activeVideo?.isPlaying ?? false;
-    final floatingVideosEnabled = _extensionManager?.isExtensionEnabled('floating_videos') ?? false;
-
-    debugPrint("Floating Video eligibility check started");
-    debugPrint("Current URL=$url");
-    debugPrint("YouTube page=$isYoutube");
-    debugPrint("Video detected=$hasActiveVideo");
-    debugPrint("Video playing=$isPlaying");
-
-    final isYoutubeVideoPlaying = _floatingCtrl?.isYoutubeVideoPlaying ?? false;
-
-    final allowed = floatingVideosEnabled &&
-           isYoutube &&
-           hasActiveVideo &&
-           isPlaying &&
-           isYoutubeVideoPlaying;
-
-    if (allowed) {
-      debugPrint("PiP allowed");
-      debugPrint("Entering PiP");
-    } else {
-      debugPrint("PiP blocked because page is not eligible");
-    }
-
-    return allowed;
-  }
-
-  Future<void> _checkAndTriggerPiP() async {
-    if (!mounted) return;
-    final tabManager = _tabManager;
-    final extMgr = _extensionManager;
-    final floatingCtrl = _floatingCtrl;
-    if (tabManager == null || extMgr == null || floatingCtrl == null) return;
-
-    final isActiveTab = tabManager.currentTab?.id == widget.tab.id;
-    if (!isActiveTab) return;
-
-    if (!shouldEnterFloatingVideoMode()) {
-      debugPrint(
-        "Floating Video blocked: current page is not eligible"
-      );
-      return;
-    }
-
-    final activeVideo = floatingCtrl.activeVideo;
-    if (activeVideo == null) {
-      return;
-    }
-
-    print("[FLOATING VIDEO DEBUG] video detected: Title=${activeVideo.videoTitle}, isPlaying=${activeVideo.isPlaying}, duration=${activeVideo.duration}, isAd=${activeVideo.isAd}, isVisible=${activeVideo.isVisible}, width=${activeVideo.videoWidth}, height=${activeVideo.videoHeight}");
-
-    if (!activeVideo.isPlaying) {
-      print("[FLOATING VIDEO DEBUG] Active video is not playing.");
-      return;
-    }
-
-    if (activeVideo.isAd) {
-      print("[FLOATING VIDEO DEBUG] Active video is an ad.");
-      return;
-    }
-
-    if (activeVideo.duration <= 0) {
-      print("[FLOATING VIDEO DEBUG] Active video duration is not valid (${activeVideo.duration}).");
-      return;
-    }
-
-    if (!activeVideo.isVisible) {
-      print("[FLOATING VIDEO DEBUG] Active video is not visible.");
-      return;
-    }
-
-    // Use cached dimensions if current ones are invalid
-    var pipWidth = activeVideo.videoWidth;
-    var pipHeight = activeVideo.videoHeight;
-    if (pipWidth <= 0 || pipHeight <= 0) {
-      pipWidth = floatingCtrl.lastKnownVideoWidth;
-      pipHeight = floatingCtrl.lastKnownVideoHeight;
-      print("Using cached video dimensions ${pipWidth}x${pipHeight}");
-    }
-    // Fallback to 16:9 if still invalid
-    if (pipWidth <= 0 || pipHeight <= 0) {
-      pipWidth = 1920;
-      pipHeight = 1080;
-      print("Ignoring invalid 0x0 during PiP transition");
-    }
-
-    final isSupported = await FloatingVideoChannel.isPictureInPictureSupported();
-    if (!mounted) return;
-    print("[FLOATING VIDEO DEBUG] PiP support available: $isSupported");
-    if (!isSupported) {
-      print("[FLOATING VIDEO DEBUG] PiP failed reason: PiP not supported on this device.");
-      floatingCtrl.updateState(FloatingVideoState.unsupported);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Floating video is not supported on this device"),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-
-    print("[FLOATING VIDEO DEBUG] minimize detected");
-    print("[FLOATING VIDEO DEBUG] WebView kept alive");
-    await floatingCtrl.enterVideoPip();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final extensionManager = context.watch<ExtensionManager>();
-    final isAdBlockerEnabled = extensionManager.isExtensionEnabled('ad_blocker_downloader');
-    final isVideoDownloaderEnabled = extensionManager.isExtensionEnabled('ad_blocker_downloader');
-    
+    final isAdBlockerEnabled = extensionManager.isExtensionEnabled(
+      'ad_blocker_downloader',
+    );
+    final isVideoDownloaderEnabled = extensionManager.isExtensionEnabled(
+      'ad_blocker_downloader',
+    );
+
     // Sync script engine state
     widget.scriptEngine.isAdBlockerEnabled = isAdBlockerEnabled;
     widget.scriptEngine.isVideoDownloaderEnabled = isVideoDownloaderEnabled;
 
     // Immediate injection if toggled ON
     if (isVideoDownloaderEnabled && !_lastDownloaderState) {
-      widget.tab.controller?.evaluateJavascript(source: widget.scriptEngine.videoDownloaderScript);
+      widget.tab.controller?.evaluateJavascript(
+        source: widget.scriptEngine.videoDownloaderScript,
+      );
     }
     _lastDownloaderState = isVideoDownloaderEnabled;
 
-    final isBgPlayerEnabled = extensionManager.isExtensionEnabled('background_player');
+    final isBgPlayerEnabled = extensionManager.isExtensionEnabled(
+      'background_player',
+    );
     BackgroundPlayerService.isEnabled = isBgPlayerEnabled;
     if (!isBgPlayerEnabled) {
       BackgroundPlayerService.handleExtensionDisabled();
     }
-    final isFloatingVideosEnabled = extensionManager.isExtensionEnabled('floating_videos');
-    if (isFloatingVideosEnabled != _lastFloatingVideoState) {
-      _lastFloatingVideoState = isFloatingVideosEnabled;
-      FloatingVideoChannel.setFloatingVideoEnabled(isFloatingVideosEnabled);
-    }
-    
+
     final tabManager = context.watch<TabManager>();
     final isActiveTab = tabManager.currentTab?.id == widget.tab.id;
     if (isActiveTab && isBgPlayerEnabled && widget.tab.controller != null) {
-      BackgroundPlayerService.setActiveController(widget.tab.id, widget.tab.controller);
+      BackgroundPlayerService.setActiveController(
+        widget.tab.id,
+        widget.tab.controller,
+      );
       BackgroundPlayerService.injectMediaDetector(widget.tab.controller!);
-    }
-    if (isActiveTab && isFloatingVideosEnabled && widget.tab.controller != null) {
-      widget.tab.controller?.evaluateJavascript(source: FloatingVideoDetector.detectionScript);
     }
 
     return InAppWebView(
@@ -303,27 +168,47 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         allowsInlineMediaPlayback: true,
         domStorageEnabled: true,
         allowBackgroundAudioPlaying: true,
-        contentBlockers: isAdBlockerEnabled ? [
-          ContentBlocker(
-            trigger: ContentBlockerTrigger(urlFilter: ".*googleadservices.*"),
-            action: ContentBlockerAction(type: ContentBlockerActionType.BLOCK),
-          ),
-          ContentBlocker(
-            trigger: ContentBlockerTrigger(urlFilter: ".*doubleclick.net.*"),
-            action: ContentBlockerAction(type: ContentBlockerActionType.BLOCK),
-          ),
-          ContentBlocker(
-            trigger: ContentBlockerTrigger(urlFilter: ".*ads.google.com.*"),
-            action: ContentBlockerAction(type: ContentBlockerActionType.BLOCK),
-          ),
-          ContentBlocker(
-            trigger: ContentBlockerTrigger(urlFilter: ".*googlesyndication.com.*"),
-            action: ContentBlockerAction(type: ContentBlockerActionType.BLOCK),
-          ),
-        ] : [],
+        contentBlockers: isAdBlockerEnabled
+            ? [
+                ContentBlocker(
+                  trigger: ContentBlockerTrigger(
+                    urlFilter: ".*googleadservices.*",
+                  ),
+                  action: ContentBlockerAction(
+                    type: ContentBlockerActionType.BLOCK,
+                  ),
+                ),
+                ContentBlocker(
+                  trigger: ContentBlockerTrigger(
+                    urlFilter: ".*doubleclick.net.*",
+                  ),
+                  action: ContentBlockerAction(
+                    type: ContentBlockerActionType.BLOCK,
+                  ),
+                ),
+                ContentBlocker(
+                  trigger: ContentBlockerTrigger(
+                    urlFilter: ".*ads.google.com.*",
+                  ),
+                  action: ContentBlockerAction(
+                    type: ContentBlockerActionType.BLOCK,
+                  ),
+                ),
+                ContentBlocker(
+                  trigger: ContentBlockerTrigger(
+                    urlFilter: ".*googlesyndication.com.*",
+                  ),
+                  action: ContentBlockerAction(
+                    type: ContentBlockerActionType.BLOCK,
+                  ),
+                ),
+              ]
+            : [],
       ),
       shouldInterceptRequest: (controller, request) async {
-        if (!mounted || _adBlockStatsService == null || _extensionManager == null) {
+        if (!mounted ||
+            _adBlockStatsService == null ||
+            _extensionManager == null) {
           print("Provider callback ignored because widget unmounted");
           return null;
         }
@@ -333,7 +218,9 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         );
         return await adBlockService.interceptRequest(
           url: request.url.toString(),
-          requestType: request.isForMainFrame == true ? 'document' : 'subresource',
+          requestType: request.isForMainFrame == true
+              ? 'document'
+              : 'subresource',
           sourceUrl: widget.tab.url,
         );
       },
@@ -348,7 +235,8 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         // Try JS-based element retrieval at coordinate / contextmenu target
         Map<String, dynamic>? jsResult;
         try {
-          final dynamic evalValue = await controller.evaluateJavascript(source: """
+          final dynamic evalValue = await controller.evaluateJavascript(
+            source: """
             (function() {
               var el = window.lastContextMenuTarget;
               if (!el) {
@@ -387,7 +275,8 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
 
               return null;
             })();
-          """);
+          """,
+          );
 
           if (evalValue != null) {
             jsResult = Map<String, dynamic>.from(evalValue as Map);
@@ -418,7 +307,9 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         }
 
         // Fallback to native hitTestResult if JS extraction yielded nothing
-        if (finalUrl.isEmpty && nativeUrl != null && nativeUrl.trim().isNotEmpty) {
+        if (finalUrl.isEmpty &&
+            nativeUrl != null &&
+            nativeUrl.trim().isNotEmpty) {
           finalUrl = nativeUrl.trim();
           if (hitTestResult.type == InAppWebViewHitTestResultType.IMAGE_TYPE) {
             type = LinkType.image;
@@ -427,10 +318,14 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
           }
         }
 
-        final isDevToolsEnabled = extensionManager.isExtensionEnabled('dev_tools');
+        final isDevToolsEnabled = extensionManager.isExtensionEnabled(
+          'dev_tools',
+        );
         if (isDevToolsEnabled) {
           try {
-            final dynamic elementEval = await controller.evaluateJavascript(source: DevToolsService.getElementInfoScript);
+            final dynamic elementEval = await controller.evaluateJavascript(
+              source: DevToolsService.getElementInfoScript,
+            );
             if (elementEval != null) {
               final elementMap = Map<String, dynamic>.from(elementEval as Map);
               final info = SelectedElementInfo.fromMap(elementMap);
@@ -462,9 +357,13 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
           type = LinkType.phone;
         } else if (finalUrl.toLowerCase().endsWith('.pdf')) {
           type = LinkType.pdf;
-        } else if (finalUrl.toLowerCase().endsWith('.mp4') || finalUrl.toLowerCase().endsWith('.mp3') || finalUrl.toLowerCase().endsWith('.webm')) {
+        } else if (finalUrl.toLowerCase().endsWith('.mp4') ||
+            finalUrl.toLowerCase().endsWith('.mp3') ||
+            finalUrl.toLowerCase().endsWith('.webm')) {
           type = LinkType.video;
-        } else if (finalUrl.toLowerCase().endsWith('.zip') || finalUrl.toLowerCase().endsWith('.apk') || finalUrl.toLowerCase().endsWith('.dmg')) {
+        } else if (finalUrl.toLowerCase().endsWith('.zip') ||
+            finalUrl.toLowerCase().endsWith('.apk') ||
+            finalUrl.toLowerCase().endsWith('.dmg')) {
           type = LinkType.download;
         }
 
@@ -480,11 +379,17 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         }
 
         // Log context menu debug info
-        print("[CONTEXT MENU DEBUG] Detected Element Type: ${jsResult != null ? jsResult['type'] : 'Native HitTest'}");
+        print(
+          "[CONTEXT MENU DEBUG] Detected Element Type: ${jsResult != null ? jsResult['type'] : 'Native HitTest'}",
+        );
         print("[CONTEXT MENU DEBUG] Final Selected URL: $finalUrl");
-        print("[CONTEXT MENU DEBUG] Parent Anchor Found: ${jsResult != null && jsResult['type'] == 'link'}");
+        print(
+          "[CONTEXT MENU DEBUG] Parent Anchor Found: ${jsResult != null && jsResult['type'] == 'link'}",
+        );
         print("[CONTEXT MENU DEBUG] Link Text / Title: $finalTitle");
-        print("[CONTEXT MENU DEBUG] Image Source (if inside link): $imageSrcIfInsideLink");
+        print(
+          "[CONTEXT MENU DEBUG] Image Source (if inside link): $imageSrcIfInsideLink",
+        );
 
         final metadata = LinkMetadata(
           url: finalUrl,
@@ -515,21 +420,20 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
           return;
         }
         widget.tab.controller = controller;
-        
+
         final tabManager = _tabManager;
         final extMgr = _extensionManager;
         if (tabManager == null || extMgr == null) return;
-        final isBgPlayerEnabled = extMgr.isExtensionEnabled('background_player');
+        final isBgPlayerEnabled = extMgr.isExtensionEnabled(
+          'background_player',
+        );
         if (isBgPlayerEnabled && tabManager.currentTab?.id == widget.tab.id) {
-          BackgroundPlayerService.setActiveController(widget.tab.id, controller);
+          BackgroundPlayerService.setActiveController(
+            widget.tab.id,
+            controller,
+          );
         }
 
-        // Register Floating Videos JavaScript handler and active controller
-        FloatingVideosService.setupJavaScriptHandler(controller, widget.tab.id, extMgr, _floatingCtrl!);
-        if (tabManager.currentTab?.id == widget.tab.id) {
-          _floatingCtrl?.setWebViewController(controller);
-        }
-        
         // Register JavaScript handler for video downloader
         controller.addJavaScriptHandler(
           handlerName: 'triggerDownload',
@@ -564,7 +468,9 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
               downloadCtrl.updateCurrentPlayingVideo(null);
             } else {
               final service = VideoDetectionService();
-              final playingVideo = service.parseVideoState(Map<String, dynamic>.from(data));
+              final playingVideo = service.parseVideoState(
+                Map<String, dynamic>.from(data),
+              );
               downloadCtrl.updateCurrentPlayingVideo(playingVideo);
             }
           },
@@ -589,9 +495,6 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
           canGoBack: canGoBack,
           canGoForward: canGoForward,
         );
-        
-        // Force close floating video on actual page navigation
-        _floatingCtrl?.forceClose();
 
         await widget.scriptEngine.onPageStart(controller, url);
       },
@@ -604,7 +507,7 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         final dataManager = _dataManager;
         final extMgr = _extensionManager;
         if (tabManager == null || dataManager == null || extMgr == null) return;
-        
+
         final title = await controller.getTitle() ?? "New Tab";
         final canGoBack = await controller.canGoBack();
         final canGoForward = await controller.canGoForward();
@@ -612,7 +515,7 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
           print("Provider callback ignored because widget unmounted");
           return;
         }
-        
+
         tabManager.updateTab(
           widget.tab.id,
           url: url.toString(),
@@ -624,7 +527,7 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         if (!widget.tab.isIncognito) {
           dataManager.addHistory(url.toString(), title);
         }
-        
+
         // Restore scroll position if saved
         if (widget.tab.scrollX != null && widget.tab.scrollY != null) {
           try {
@@ -636,17 +539,14 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
             print("Error restoring scroll position: $e");
           }
         }
-        
-        final isBgPlayerEnabled = extMgr.isExtensionEnabled('background_player');
+
+        final isBgPlayerEnabled = extMgr.isExtensionEnabled(
+          'background_player',
+        );
         if (isBgPlayerEnabled) {
           await BackgroundPlayerService.injectMediaDetector(controller);
         }
 
-        final isFloatingVideosEnabled = extMgr.isExtensionEnabled('floating_videos');
-        if (isFloatingVideosEnabled) {
-          await controller.evaluateJavascript(source: FloatingVideoDetector.detectionScript);
-        }
-        
         await widget.scriptEngine.onPageFinished(controller, url);
       },
       onProgressChanged: (controller, progress) {
@@ -676,11 +576,6 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
           canGoBack: canGoBack,
           canGoForward: canGoForward,
         );
-
-        final isFloatingVideosEnabled = extMgr.isExtensionEnabled('floating_videos');
-        if (isFloatingVideosEnabled) {
-          await controller.evaluateJavascript(source: FloatingVideoDetector.detectionScript);
-        }
 
         await widget.scriptEngine.onUrlChanged(controller, url);
       },
@@ -712,7 +607,9 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Download started: ${downloadRequest.suggestedFilename ?? 'file'}"),
+            content: Text(
+              "Download started: ${downloadRequest.suggestedFilename ?? 'file'}",
+            ),
             backgroundColor: Colors.cyanAccent.withOpacity(0.8),
           ),
         );
@@ -749,9 +646,11 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
         }
 
         print("WebView Error (Main Frame): ${error.description}");
-        
-        if (error.description.contains("ERR_NAME_NOT_RESOLVED") || error.description.contains("ERR_CONNECTION_REFUSED")) {
-          controller.loadData(data: """
+
+        if (error.description.contains("ERR_NAME_NOT_RESOLVED") ||
+            error.description.contains("ERR_CONNECTION_REFUSED")) {
+          controller.loadData(
+            data: """
             <!DOCTYPE html>
             <html>
               <head>
@@ -791,7 +690,8 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
                 <button class="btn" onclick="window.location.reload()">Reload</button>
               </body>
             </html>
-          """);
+          """,
+          );
         }
 
         if (_extensionManager?.isExtensionEnabled('dev_tools') == true) {
@@ -835,7 +735,8 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
           return;
         }
         final msg = consoleMessage.message;
-        if (msg.contains("generate_204") || msg.contains("preloaded but not used")) {
+        if (msg.contains("generate_204") ||
+            msg.contains("preloaded but not used")) {
           assert(() {
             print("Console Warning (Filtered): $msg");
             return true;
@@ -848,17 +749,15 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
           ConsoleLogType logType = ConsoleLogType.log;
           if (consoleMessage.messageLevel == ConsoleMessageLevel.ERROR) {
             logType = ConsoleLogType.error;
-          } else if (consoleMessage.messageLevel == ConsoleMessageLevel.WARNING) {
+          } else if (consoleMessage.messageLevel ==
+              ConsoleMessageLevel.WARNING) {
             logType = ConsoleLogType.warn;
           } else if (consoleMessage.messageLevel == ConsoleMessageLevel.LOG) {
             logType = ConsoleLogType.log;
           } else if (consoleMessage.messageLevel == ConsoleMessageLevel.TIP) {
             logType = ConsoleLogType.info;
           }
-          _devToolsCtrl?.addConsoleLog(
-            msg,
-            logType,
-          );
+          _devToolsCtrl?.addConsoleLog(msg, logType);
         }
       },
       onTitleChanged: (controller, title) {
@@ -883,10 +782,8 @@ class _WebViewWrapperState extends State<WebViewWrapper> with WidgetsBindingObse
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => QualitySelectorSheet(
-        url: pageUrl ?? url,
-        title: title,
-      ),
+      builder: (context) =>
+          QualitySelectorSheet(url: pageUrl ?? url, title: title),
     );
   }
 }

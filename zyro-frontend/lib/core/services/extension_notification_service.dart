@@ -7,33 +7,36 @@ class ExtensionNotificationService {
     String message = '';
     if (isEnabled) {
       if (id == 'dev_tools') {
-        message = 'Dev Tools enabled — Inspect option is now available in the context menu.';
+        message =
+            'Dev Tools enabled — Inspect option is now available in the context menu.';
       } else if (id == 'ad_blocker_downloader') {
-        message = 'Ad Blocker & Downloader enabled — ads will be blocked and video tools are available.';
+        message =
+            'Ad Blocker & Downloader enabled — ads will be blocked and video tools are available.';
       } else if (id == 'background_player') {
-        message = 'Background Player enabled — media can continue playing when Zyro is minimized.';
+        message =
+            'Background Player enabled — media can continue playing when Zyro is minimized.';
       } else if (id == 'dark_mode') {
-        message = 'Dark Reader enabled — High-contrast dark mode applied to websites.';
+        message =
+            'Dark Reader enabled — High-contrast dark mode applied to websites.';
       } else if (id == 'password_gen') {
         message = 'KeyGen enabled — Password manager and generator is active.';
-      } else if (id == 'floating_videos') {
-        message = 'Floating Videos enabled — videos can now play in a movable mini-player.';
       } else {
         message = '$name enabled.';
       }
     } else {
       if (id == 'dev_tools') {
-        message = 'Dev Tools disabled — Inspect option has been removed from the context menu.';
+        message =
+            'Dev Tools disabled — Inspect option has been removed from the context menu.';
       } else if (id == 'ad_blocker_downloader') {
-        message = 'Ad Blocker & Downloader disabled — ads and video tools are inactive.';
+        message =
+            'Ad Blocker & Downloader disabled — ads and video tools are inactive.';
       } else if (id == 'background_player') {
-        message = 'Background Player disabled — media will stop or pause normally when the app is minimized.';
+        message =
+            'Background Player disabled — media will stop or pause normally when the app is minimized.';
       } else if (id == 'dark_mode') {
         message = 'Dark Reader disabled — Standard website theme restored.';
       } else if (id == 'password_gen') {
         message = 'KeyGen disabled — Password manager is inactive.';
-      } else if (id == 'floating_videos') {
-        message = 'Floating Videos disabled — floating mini-player has been turned off.';
       } else {
         message = '$name disabled.';
       }
@@ -43,7 +46,10 @@ class ExtensionNotificationService {
   }
 
   static void showRemoveNotification(String name) {
-    _showSnackbar('$name removed — moved back to Available extensions.', Colors.redAccent);
+    _showSnackbar(
+      '$name removed — moved back to Available extensions.',
+      Colors.redAccent,
+    );
   }
 
   static void _showSnackbar(String message, Color color) {
