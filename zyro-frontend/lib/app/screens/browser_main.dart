@@ -13,6 +13,8 @@ import '../widgets/glass_container.dart';
 import 'tab_switcher.dart';
 
 import '../../features/video_downloader/widgets/floating_download_button.dart';
+import '../../features/screenshot_pro/controllers/screenshot_pro_controller.dart';
+import '../../features/screenshot_pro/widgets/screenshot_floating_button.dart';
 
 class BrowserMainScreen extends StatefulWidget {
   const BrowserMainScreen({super.key});
@@ -127,6 +129,13 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
                   ],
                 ),
                 const FloatingDownloadButton(),
+                Consumer<ScreenshotProController>(
+                  builder: (_, screenshotPro, __) {
+                    if (!screenshotPro.enabled || currentTab.isIncognito)
+                      return const SizedBox.shrink();
+                    return const ScreenshotFloatingButton();
+                  },
+                ),
               ],
             ),
           ),

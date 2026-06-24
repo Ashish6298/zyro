@@ -12,7 +12,6 @@ import '../../features/download_library/screens/downloads_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../screens/extensions_screen.dart';
 import '../../core/theme/app_colors.dart';
-import '../../features/screenshot_pro/screens/screenshot_pro_sheet.dart';
 
 class CyberMenu extends StatelessWidget {
   const CyberMenu({super.key});
@@ -248,21 +247,6 @@ class CyberMenu extends StatelessWidget {
                         context,
                         listen: false,
                       ).toggleFindInPage();
-                    },
-                  ),
-                  MenuCard(
-                    icon: LucideIcons.camera,
-                    label: 'SCREENSHOT PRO',
-                    description: 'Full page capture',
-                    onPressed: () {
-                      if (currentTab == null) return;
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ScreenshotProSheet(tab: currentTab),
-                        ),
-                      );
                     },
                   ),
                   MenuCard(

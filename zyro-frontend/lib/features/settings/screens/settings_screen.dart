@@ -7,6 +7,7 @@ import '../../../core/theme/theme_controller.dart';
 import 'developer_info_screen.dart';
 import '../../extensions/ad_blocker/widgets/ad_block_settings_stats_widget.dart';
 import '../../permissions/screens/website_permissions_screen.dart';
+import '../../screenshot_pro/controllers/screenshot_pro_controller.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -89,6 +90,50 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
           const SizedBox(height: 14),
+
+          _buildSectionHeader(theme, 'SCREENSHOT PRO'),
+          Consumer<ScreenshotProController>(
+            builder: (context, controller, _) => Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: theme.dividerColor.withOpacity(.4)),
+              ),
+              child: SwitchListTile(
+                secondary: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withOpacity(.06),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    LucideIcons.camera,
+                    color: theme.colorScheme.primary,
+                    size: 20,
+                  ),
+                ),
+                title: Text(
+                  'Screenshot Pro',
+                  style: GoogleFonts.outfit(
+                    color: theme.colorScheme.onSurface,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: Text(
+                  'Show floating capture button',
+                  style: GoogleFonts.outfit(
+                    color: theme.colorScheme.onSurface.withOpacity(.4),
+                    fontSize: 11,
+                  ),
+                ),
+                value: controller.enabled,
+                onChanged: controller.setEnabled,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
 
           const AdBlockSettingsStatsWidget(),
           const SizedBox(height: 24),
