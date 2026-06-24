@@ -10,6 +10,8 @@ import 'features/splash/screens/splash_screen.dart';
 import 'features/video_downloader/controllers/download_controller.dart';
 import 'features/extensions/dev_tools/dev_tools_controller.dart';
 import 'features/extensions/ad_blocker/services/ad_block_stats_service.dart';
+import 'features/permissions/controllers/website_permissions_controller.dart';
+import 'features/permissions/services/website_permission_manager.dart';
 
 import 'features/extensions/background_player/background_player_service.dart';
 
@@ -26,6 +28,13 @@ void main() {
         ChangeNotifierProvider(create: (_) => DownloadController()),
         ChangeNotifierProvider(create: (_) => DevToolsController()),
         ChangeNotifierProvider(create: (_) => AdBlockStatsService()),
+        ChangeNotifierProvider<WebsitePermissionsController>(
+          create: (_) {
+            final manager = WebsitePermissionManager.instance;
+            manager.initialize();
+            return manager.controller;
+          },
+        ),
       ],
       child: const ZyroApp(),
     ),

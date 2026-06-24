@@ -20,6 +20,8 @@ import '../features/extensions/dev_tools/dev_tools_models.dart';
 import '../features/extensions/background_player/background_player_service.dart';
 import '../features/extensions/ad_blocker/services/ad_block_service.dart';
 import '../features/extensions/ad_blocker/services/ad_block_stats_service.dart';
+import '../features/permissions/models/permission_enums.dart';
+import '../features/permissions/services/website_permission_manager.dart';
 
 class WebViewWrapper extends StatefulWidget {
   final TabModel tab;
@@ -61,6 +63,20 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
   void dispose() {
     BackgroundPlayerService.handleTabClosed(widget.tab.id);
     super.dispose();
+  }
+
+  PermissionType? _permissionTypeForResource(PermissionResourceType resource) {
+    if (resource == PermissionResourceType.CAMERA) return PermissionType.camera;
+    if (resource == PermissionResourceType.MICROPHONE) {
+      return PermissionType.microphone;
+    }
+    if (resource == PermissionResourceType.CLIPBOARD_READ) {
+      return PermissionType.clipboard;
+    }
+    if (resource == PermissionResourceType.NOTIFICATIONS) {
+      return PermissionType.notifications;
+    }
+    return null;
   }
 
   @override
@@ -205,6 +221,41 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
               ]
             : [],
       ),
+      onPermissionRequest: (controller, request) async {
+        if (!mounted) return PermissionResponse();
+        final granted = <PermissionResourceType>[];
+        for (final resource in request.resources) {
+          final type = _permissionTypeForResource(resource);
+          if (type != null &&
+              await WebsitePermissionManager.instance.resolve(
+                context,
+                request.origin.toString(),
+                type,
+              )) {
+            granted.add(resource);
+          }
+        }
+        return PermissionResponse(
+          action: granted.isEmpty
+              ? PermissionResponseAction.DENY
+              : PermissionResponseAction.GRANT,
+          resources: granted,
+        );
+      },
+      onGeolocationPermissionsShowPrompt: (controller, origin) async {
+        final allowed =
+            mounted &&
+            await WebsitePermissionManager.instance.resolve(
+              context,
+              origin,
+              PermissionType.location,
+            );
+        return GeolocationPermissionShowPromptResponse(
+          allow: allowed,
+          origin: origin,
+          retain: allowed,
+        );
+      },
       shouldInterceptRequest: (controller, request) async {
         if (!mounted ||
             _adBlockStatsService == null ||

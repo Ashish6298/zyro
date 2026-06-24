@@ -6,6 +6,7 @@ import '../../../core/browser_data_manager.dart';
 import '../../../core/theme/theme_controller.dart';
 import 'developer_info_screen.dart';
 import '../../extensions/ad_blocker/widgets/ad_block_settings_stats_widget.dart';
+import '../../permissions/screens/website_permissions_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -52,7 +53,7 @@ class SettingsScreen extends StatelessWidget {
           _buildSectionHeader(theme, 'APPEARANCE'),
           _buildThemeSelector(themeController),
           const SizedBox(height: 24),
-          
+
           _buildSectionHeader(theme, 'PRIVACY'),
           SettingTile(
             icon: LucideIcons.history,
@@ -72,9 +73,26 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
+          _buildSectionHeader(theme, 'PERMISSIONS'),
+          SettingTile(
+            icon: LucideIcons.shieldCheck,
+            title: 'Website Permissions',
+            subtitle:
+                'Manage camera, microphone, location, notifications, and clipboard access',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const WebsitePermissionsScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 14),
+
           const AdBlockSettingsStatsWidget(),
           const SizedBox(height: 24),
-          
+
           _buildSectionHeader(theme, 'ABOUT'),
           SettingTile(
             customLeading: Container(
@@ -85,10 +103,7 @@ class SettingsScreen extends StatelessWidget {
                 color: theme.colorScheme.primary.withOpacity(0.06),
                 shape: BoxShape.circle,
               ),
-              child: Image.asset(
-                'assets/logo.png',
-                fit: BoxFit.contain,
-              ),
+              child: Image.asset('assets/logo.png', fit: BoxFit.contain),
             ),
             title: 'Zyro Browser',
             subtitle: 'Version 1.0.0',
@@ -101,7 +116,9 @@ class SettingsScreen extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const DeveloperInfoScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const DeveloperInfoScreen(),
+                ),
               );
             },
           ),
@@ -164,7 +181,10 @@ class SettingsScreen extends StatelessWidget {
       SnackBar(
         content: Text(
           'Action Completed',
-          style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
+          style: GoogleFonts.outfit(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: theme.colorScheme.primary,
         behavior: SnackBarBehavior.floating,
@@ -216,21 +236,25 @@ class _ThemeModeCardState extends State<ThemeModeCard> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
           decoration: BoxDecoration(
-            color: widget.isSelected 
-                ? activeColor.withOpacity(isDark ? 0.15 : 0.08) 
+            color: widget.isSelected
+                ? activeColor.withOpacity(isDark ? 0.15 : 0.08)
                 : (isDark ? theme.cardColor.withOpacity(0.5) : theme.cardColor),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: widget.isSelected 
-                  ? activeColor 
-                  : (isDark ? theme.dividerColor.withOpacity(0.06) : theme.dividerColor.withOpacity(0.4)),
+              color: widget.isSelected
+                  ? activeColor
+                  : (isDark
+                        ? theme.dividerColor.withOpacity(0.06)
+                        : theme.dividerColor.withOpacity(0.4)),
               width: 1.2,
             ),
             boxShadow: [
               BoxShadow(
-                color: widget.isSelected 
-                    ? activeColor.withOpacity(0.1) 
-                    : (isDark ? Colors.black.withOpacity(0.15) : Colors.black.withOpacity(0.01)),
+                color: widget.isSelected
+                    ? activeColor.withOpacity(0.1)
+                    : (isDark
+                          ? Colors.black.withOpacity(0.15)
+                          : Colors.black.withOpacity(0.01)),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
               ),
@@ -241,7 +265,9 @@ class _ThemeModeCardState extends State<ThemeModeCard> {
             children: [
               Icon(
                 widget.icon,
-                color: widget.isSelected ? activeColor : theme.colorScheme.onSurface.withOpacity(0.6),
+                color: widget.isSelected
+                    ? activeColor
+                    : theme.colorScheme.onSurface.withOpacity(0.6),
                 size: 24,
               ),
               const SizedBox(height: 8),
@@ -249,8 +275,12 @@ class _ThemeModeCardState extends State<ThemeModeCard> {
                 widget.title,
                 style: GoogleFonts.outfit(
                   fontSize: 12,
-                  fontWeight: widget.isSelected ? FontWeight.bold : FontWeight.w600,
-                  color: widget.isSelected ? activeColor : theme.colorScheme.onSurface.withOpacity(0.8),
+                  fontWeight: widget.isSelected
+                      ? FontWeight.bold
+                      : FontWeight.w600,
+                  color: widget.isSelected
+                      ? activeColor
+                      : theme.colorScheme.onSurface.withOpacity(0.8),
                 ),
               ),
             ],
@@ -290,12 +320,18 @@ class _SettingTileState extends State<SettingTile> {
     final isDark = theme.brightness == Brightness.dark;
 
     return GestureDetector(
-      onTapDown: widget.onTap == null ? null : (_) => setState(() => _scale = 0.98),
-      onTapUp: widget.onTap == null ? null : (_) {
-        setState(() => _scale = 1.0);
-        widget.onTap!();
-      },
-      onTapCancel: widget.onTap == null ? null : () => setState(() => _scale = 1.0),
+      onTapDown: widget.onTap == null
+          ? null
+          : (_) => setState(() => _scale = 0.98),
+      onTapUp: widget.onTap == null
+          ? null
+          : (_) {
+              setState(() => _scale = 1.0);
+              widget.onTap!();
+            },
+      onTapCancel: widget.onTap == null
+          ? null
+          : () => setState(() => _scale = 1.0),
       child: AnimatedScale(
         scale: _scale,
         duration: const Duration(milliseconds: 150),
@@ -307,12 +343,16 @@ class _SettingTileState extends State<SettingTile> {
             color: isDark ? theme.cardColor.withOpacity(0.4) : theme.cardColor,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isDark ? theme.dividerColor.withOpacity(0.06) : theme.dividerColor.withOpacity(0.4),
+              color: isDark
+                  ? theme.dividerColor.withOpacity(0.06)
+                  : theme.dividerColor.withOpacity(0.4),
               width: 1.0,
             ),
             boxShadow: [
               BoxShadow(
-                color: isDark ? Colors.black.withOpacity(0.15) : Colors.black.withOpacity(0.01),
+                color: isDark
+                    ? Colors.black.withOpacity(0.15)
+                    : Colors.black.withOpacity(0.01),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
               ),
