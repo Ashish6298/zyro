@@ -3,6 +3,14 @@ package com.example.zyro
 import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -18,6 +26,8 @@ import android.webkit.WebView
 
 class MainActivity : FlutterActivity() {
     private val channelName = "zyro/downloads"
+    private var webAppChannel: MethodChannel? = null
+    private var initialShortcutUrl: String? = null
     
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -39,6 +49,16 @@ class MainActivity : FlutterActivity() {
                     result.notImplemented()
                 }
             }
+
+        initialShortcutUrl = intent?.getStringExtra("zyro_web_app_url")
+        webAppChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "zyro/web_apps")
+        webAppChannel?.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "pinWebAppShortcut" -> pinWebAppShortcut(call, result)
+                "getInitialShortcutUrl" -> result.success(initialShortcutUrl)
+                else -> result.notImplemented()
+            }
+        }
 
         val backgroundPlayerChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "zyro/background_player")
         backgroundPlayerChannel.setMethodCallHandler { call, result ->
@@ -115,6 +135,88 @@ class MainActivity : FlutterActivity() {
             }
         }
 
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val shortcutUrl = intent.getStringExtra("zyro_web_app_url")
+        if (!shortcutUrl.isNullOrBlank()) {
+            initialShortcutUrl = shortcutUrl
+            webAppChannel?.invokeMethod("webAppShortcutLaunched", mapOf("url" to shortcutUrl))
+            android.util.Log.d("WEB_APPS", "Shortcut launch intent received")
+        }
+    }
+
+    private fun pinWebAppShortcut(call: MethodCall, result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            result.success(mapOf("supported" to false, "message" to "Home screen shortcuts are not supported on this device"))
+            return
+        }
+
+        val shortcutManager = getSystemService(ShortcutManager::class.java)
+        if (shortcutManager == null || !shortcutManager.isRequestPinShortcutSupported) {
+            result.success(mapOf("supported" to false, "message" to "Home screen shortcuts are not supported on this device"))
+            return
+        }
+
+        val id = call.argument<String>("id") ?: "zyro_webapp_${System.currentTimeMillis()}"
+        val name = (call.argument<String>("name") ?: "Zyro App").take(40)
+        val url = call.argument<String>("url") ?: run {
+            result.error("INVALID_URL", "Missing web app URL", null)
+            return
+        }
+        val iconPath = call.argument<String>("iconPath")
+
+        val launchIntent = Intent(this, MainActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            putExtra("zyro_web_app_url", url)
+            putExtra("zyro_web_app_id", id)
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+
+        val shortcut = ShortcutInfo.Builder(this, id)
+            .setShortLabel(name)
+            .setLongLabel(name)
+            .setIcon(loadShortcutIcon(name, iconPath))
+            .setIntent(launchIntent)
+            .build()
+
+        try {
+            shortcutManager.requestPinShortcut(shortcut, null)
+            android.util.Log.d("WEB_APPS", "Shortcut created/requested")
+            result.success(mapOf("supported" to true, "requested" to true))
+        } catch (error: Exception) {
+            result.error("SHORTCUT_FAILED", error.message ?: "Unable to pin shortcut", null)
+        }
+    }
+
+    private fun loadShortcutIcon(name: String, iconPath: String?): Icon {
+        if (!iconPath.isNullOrBlank()) {
+            val bitmap = BitmapFactory.decodeFile(iconPath)
+            if (bitmap != null) {
+                return Icon.createWithBitmap(bitmap)
+            }
+        }
+        return Icon.createWithBitmap(createFallbackIcon(name))
+    }
+
+    private fun createFallbackIcon(name: String): Bitmap {
+        val size = 192
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val background = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(91, 79, 242) }
+        canvas.drawRoundRect(0f, 0f, size.toFloat(), size.toFloat(), 42f, 42f, background)
+        val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textAlign = Paint.Align.CENTER
+            textSize = 86f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        }
+        val letter = name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "Z"
+        val y = size / 2f - (text.descent() + text.ascent()) / 2f
+        canvas.drawText(letter, size / 2f, y, text)
+        return bitmap
     }
 
     private fun enqueueDownload(call: MethodCall, result: MethodChannel.Result) {

@@ -13,6 +13,8 @@ import 'features/extensions/ad_blocker/services/ad_block_stats_service.dart';
 import 'features/permissions/controllers/website_permissions_controller.dart';
 import 'features/permissions/services/website_permission_manager.dart';
 import 'features/screenshot_pro/controllers/screenshot_pro_controller.dart';
+import 'features/web_apps/controllers/web_app_installer_controller.dart';
+import 'features/web_apps/services/web_app_shortcut_channel.dart';
 
 import 'features/extensions/background_player/background_player_service.dart';
 
@@ -30,6 +32,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => DevToolsController()),
         ChangeNotifierProvider(create: (_) => AdBlockStatsService()),
         ChangeNotifierProvider(create: (_) => ScreenshotProController()),
+        ChangeNotifierProvider(create: (_) => WebAppInstallerController()),
         ChangeNotifierProvider<WebsitePermissionsController>(
           create: (_) {
             final manager = WebsitePermissionManager.instance;
@@ -61,7 +64,49 @@ class ZyroApp extends StatelessWidget {
       darkTheme: isIncognito ? AppTheme.incognitoTheme : AppTheme.darkTheme,
       themeMode: isIncognito ? ThemeMode.dark : themeController.themeMode,
       home: const SplashScreen(),
-      builder: (context, child) => child ?? const SizedBox.shrink(),
+      builder: (context, child) => WebAppShortcutLaunchBridge(
+        child: child ?? const SizedBox.shrink(),
+      ),
     );
   }
+}
+
+class WebAppShortcutLaunchBridge extends StatefulWidget {
+  final Widget child;
+
+  const WebAppShortcutLaunchBridge({super.key, required this.child});
+
+  @override
+  State<WebAppShortcutLaunchBridge> createState() => _WebAppShortcutLaunchBridgeState();
+}
+
+class _WebAppShortcutLaunchBridgeState extends State<WebAppShortcutLaunchBridge> {
+  bool _initialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+
+    WebAppShortcutChannel.listenForShortcutLaunches(_openShortcutUrl);
+    WebAppShortcutChannel.getInitialShortcutUrl().then((url) {
+      if (url != null && url.isNotEmpty) {
+        Future.delayed(const Duration(milliseconds: 4800), () => _openShortcutUrl(url));
+      }
+    });
+  }
+
+  void _openShortcutUrl(String url) {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<TabManager>().addNewTab(url: url);
+      context.read<WebAppInstallerController>().markOpened(url);
+      debugPrint('[WEB APPS] Web app opened from shortcut');
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

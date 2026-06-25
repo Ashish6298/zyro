@@ -4,6 +4,8 @@ import '../../core/models/tab_model.dart';
 import 'glass_container.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../../features/web_apps/controllers/web_app_installer_controller.dart';
 
 class GlassAppBar extends StatefulWidget {
   final TabModel tab;
@@ -117,6 +119,8 @@ class _GlassAppBarState extends State<GlassAppBar> {
                       ),
                     ),
                   ),
+                  if (!widget.tab.isIncognito && widget.tab.url.startsWith('https://'))
+                    IconButton(icon: Icon(LucideIcons.download, size: 18, color: theme.colorScheme.primary), tooltip: 'Install App', onPressed: () => _install(context)),
                   IconButton(
                     icon: Icon(LucideIcons.rotateCcw, size: 18, color: theme.colorScheme.onSurface.withOpacity(0.5)),
                     onPressed: () => widget.tab.controller?.reload(),
@@ -131,6 +135,50 @@ class _GlassAppBarState extends State<GlassAppBar> {
         ),
         _buildProgressBar(theme),
       ],
+    );
+  }
+
+  Future<void> _install(BuildContext context) async {
+    final apps = context.read<WebAppInstallerController>();
+    final candidate = await apps.detectCandidate(widget.tab);
+    if (!context.mounted) return;
+
+    final existing = apps.appForUrl(candidate.startUrl);
+    final action = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(existing != null ? 'Already installed' : 'Install ${candidate.name}?'),
+        content: Text(
+          existing != null
+              ? '${existing.name} is already saved in Zyro Apps.'
+              : 'This web app will be saved in Zyro Apps and added to your device home screen as a shortcut. It opens inside Zyro Browser and may require internet access. It is not a native Play Store app.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(existing != null ? 'Open App' : 'Install App'),
+          ),
+        ],
+      ),
+    );
+
+    if (action != true) return;
+    if (existing != null) {
+      widget.tab.controller?.loadUrl(urlRequest: URLRequest(url: WebUri(existing.startUrl)));
+      return;
+    }
+
+    final result = await apps.installCandidate(candidate);
+    if (!context.mounted) return;
+    final message = result.shortcutSupported
+        ? 'App installed in Zyro Apps'
+        : 'App installed. Home screen shortcuts are not supported on this device';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 
