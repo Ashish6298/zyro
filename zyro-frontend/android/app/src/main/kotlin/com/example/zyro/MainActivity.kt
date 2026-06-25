@@ -9,7 +9,9 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
@@ -175,10 +177,11 @@ class MainActivity : FlutterActivity() {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
 
+        val iconBitmap = decodeShortcutIcon(name, iconPath)
         val shortcut = ShortcutInfo.Builder(this, id)
             .setShortLabel(name)
             .setLongLabel(name)
-            .setIcon(loadShortcutIcon(name, iconPath))
+            .setIcon(Icon.createWithBitmap(iconBitmap))
             .setIntent(launchIntent)
             .build()
 
@@ -191,14 +194,70 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun loadShortcutIcon(name: String, iconPath: String?): Icon {
+    private fun decodeShortcutIcon(name: String, iconPath: String?): Bitmap {
         if (!iconPath.isNullOrBlank()) {
-            val bitmap = BitmapFactory.decodeFile(iconPath)
-            if (bitmap != null) {
-                return Icon.createWithBitmap(bitmap)
+            val raw = BitmapFactory.decodeFile(iconPath)
+            if (raw != null) {
+                android.util.Log.d("WEB_APPS", "Decoded shortcut bitmap size=${raw.width}x${raw.height}")
+                val normalized = normalizeShortcutBitmap(raw)
+                val blank = isBlankBitmap(normalized)
+                android.util.Log.d("WEB_APPS", "Shortcut bitmap blank=$blank")
+                if (!blank) {
+                    android.util.Log.d("WEB_APPS", "Shortcut created with real icon")
+                    return normalized
+                }
+            } else {
+                android.util.Log.d("WEB_APPS", "Shortcut icon decode failed for path=$iconPath")
             }
         }
-        return Icon.createWithBitmap(createFallbackIcon(name))
+        android.util.Log.d("WEB_APPS", "Fallback icon used")
+        return createFallbackIcon(name)
+    }
+
+    private fun normalizeShortcutBitmap(source: Bitmap): Bitmap {
+        val size = 192
+        val output = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(output)
+        val background = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
+        canvas.drawRoundRect(0f, 0f, size.toFloat(), size.toFloat(), 42f, 42f, background)
+
+        val crop = source.width.coerceAtMost(source.height).coerceAtLeast(1)
+        val left = ((source.width - crop) / 2f).coerceAtLeast(0f)
+        val top = ((source.height - crop) / 2f).coerceAtLeast(0f)
+        val src = RectF(left, top, left + crop, top + crop)
+        val dst = RectF(14f, 14f, size - 14f, size - 14f)
+        val matrix = Matrix().apply { setRectToRect(src, dst, Matrix.ScaleToFit.CENTER) }
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG)
+        canvas.drawBitmap(source, matrix, paint)
+        return output
+    }
+
+    private fun isBlankBitmap(bitmap: Bitmap): Boolean {
+        val stepX = (bitmap.width / 24).coerceAtLeast(1)
+        val stepY = (bitmap.height / 24).coerceAtLeast(1)
+        var visible = 0
+        var varied = 0
+        var first: Int? = null
+        var nonWhite = 0
+        var y = 0
+        while (y < bitmap.height) {
+            var x = 0
+            while (x < bitmap.width) {
+                val color = bitmap.getPixel(x, y)
+                val alpha = Color.alpha(color)
+                if (alpha > 12) visible++
+                first = first ?: color
+                if (color != first) varied++
+                if (alpha > 12 && colorDistanceFromWhite(color) > 18) nonWhite++
+                x += stepX
+            }
+            y += stepY
+        }
+        return visible < 6 || varied < 2 || nonWhite < 3
+    }
+
+    private fun colorDistanceFromWhite(color: Int): Int {
+        return (255 - Color.red(color)) + (255 - Color.green(color)) + (255 - Color.blue(color))
     }
 
     private fun createFallbackIcon(name: String): Bitmap {

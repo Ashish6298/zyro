@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,6 +21,7 @@ class InstalledWebApp {
   final String startUrl;
   final String? scope;
   final String? iconUrl;
+  final List<String> iconUrls;
   final String? localIconPath;
   final String? themeColor;
   final String? backgroundColor;
@@ -36,6 +38,7 @@ class InstalledWebApp {
     required this.startUrl,
     this.scope,
     this.iconUrl,
+    this.iconUrls = const [],
     this.localIconPath,
     this.themeColor,
     this.backgroundColor,
@@ -151,7 +154,7 @@ class WebAppInstallerController extends ChangeNotifier {
     var el = document.querySelector(selector);
     return el ? el.getAttribute('content') : null;
   }
-  var icons = Array.prototype.slice.call(document.querySelectorAll('link[rel~="apple-touch-icon"], link[rel~="icon"], link[rel="shortcut icon"]')).map(function(el) {
+  var icons = Array.prototype.slice.call(document.querySelectorAll('link[rel~="apple-touch-icon"], link[rel~="apple-touch-icon-precomposed"], link[rel~="mask-icon"], link[rel~="icon"], link[rel="shortcut icon"]')).map(function(el) {
     return { href: el.href || el.getAttribute('href'), sizes: el.getAttribute('sizes') || '', rel: el.getAttribute('rel') || '' };
   });
   return JSON.stringify({
@@ -206,7 +209,8 @@ class WebAppInstallerController extends ChangeNotifier {
     }
 
     final startUrl = _resolveUrl(url, manifest['start_url'] as String? ?? url);
-    final iconUrl = _bestIconUrl(url, manifest['icons'], page['icons']);
+    final iconUrls = _bestIconUrls(url, manifest['icons'], page['icons']);
+    final iconUrl = iconUrls.isEmpty ? null : iconUrls.first;
     if (kDebugMode) debugPrint('[WEB APPS] Best icon selected: ${iconUrl ?? 'fallback'}');
 
     return WebAppInstallCandidate(
@@ -216,6 +220,7 @@ class WebAppInstallerController extends ChangeNotifier {
       startUrl: startUrl,
       scope: manifest['scope'] == null ? null : _resolveUrl(url, manifest['scope'] as String),
       iconUrl: iconUrl,
+      iconUrls: iconUrls,
       themeColor: manifest['theme_color'] as String? ?? page['themeColor'] as String?,
       backgroundColor: manifest['background_color'] as String?,
       displayMode: manifest['display'] as String?,
@@ -319,21 +324,58 @@ class WebAppInstallerController extends ChangeNotifier {
   }
 
   Future<String?> _cacheIcon(WebAppInstallCandidate candidate) async {
-    final iconUrl = candidate.iconUrl;
-    if (iconUrl == null || iconUrl.isEmpty) return null;
+    final iconUrls = candidate.iconUrls.isNotEmpty
+        ? candidate.iconUrls
+        : [
+            if (candidate.iconUrl != null) candidate.iconUrl!,
+          ];
+    if (iconUrls.isEmpty) return null;
     try {
-      final response = await http.get(Uri.parse(iconUrl));
-      if (response.statusCode < 200 || response.statusCode >= 300) return null;
       final dir = Directory(p.join((await getApplicationSupportDirectory()).path, 'web_app_icons'));
       if (!await dir.exists()) await dir.create(recursive: true);
       final file = File(p.join(dir.path, '${_webAppIdForUrl(candidate.startUrl)}.png'));
-      await file.writeAsBytes(Uint8List.fromList(response.bodyBytes), flush: true);
-      if (kDebugMode) debugPrint('[WEB APPS] Icon cached: ${file.path}');
-      return file.path;
+
+      for (final iconUrl in iconUrls) {
+        if (_looksLikeSvg(iconUrl)) {
+          if (kDebugMode) debugPrint('[WEB APPS] Icon skipped unsupported SVG: $iconUrl');
+          continue;
+        }
+        if (kDebugMode) debugPrint('[WEB APPS] Icon download started: $iconUrl');
+        final response = await http.get(Uri.parse(iconUrl));
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          if (kDebugMode) debugPrint('[WEB APPS] Icon download failed ${response.statusCode}: $iconUrl');
+          continue;
+        }
+        final contentType = response.headers['content-type']?.toLowerCase() ?? '';
+        if (contentType.contains('svg')) {
+          if (kDebugMode) debugPrint('[WEB APPS] Icon skipped SVG content: $iconUrl');
+          continue;
+        }
+        final decoded = img.decodeImage(response.bodyBytes);
+        if (decoded == null || decoded.width <= 0 || decoded.height <= 0) {
+          if (kDebugMode) debugPrint('[WEB APPS] Icon decode failed: $iconUrl');
+          continue;
+        }
+        if (_isBlankImage(decoded)) {
+          if (kDebugMode) debugPrint('[WEB APPS] Icon rejected as blank/transparent: $iconUrl');
+          continue;
+        }
+        if (kDebugMode) {
+          debugPrint('[WEB APPS] Decoded icon size: ${decoded.width}x${decoded.height}');
+        }
+        final square = _makeLauncherIcon(decoded);
+        await file.writeAsBytes(Uint8List.fromList(img.encodePng(square)), flush: true);
+        if (kDebugMode) {
+          debugPrint('[WEB APPS] Icon cached: ${file.path}');
+          debugPrint('[WEB APPS] Shortcut will use real icon');
+        }
+        return file.path;
+      }
     } catch (error) {
       if (kDebugMode) debugPrint('[WEB APPS] Icon cache failed: $error');
-      return null;
     }
+    if (kDebugMode) debugPrint('[WEB APPS] Fallback icon used');
+    return null;
   }
 
   static bool _sameInstallTarget(String a, String b) {
@@ -351,13 +393,15 @@ class WebAppInstallerController extends ChangeNotifier {
     return Uri.parse(base).resolve(value).toString();
   }
 
-  static String? _bestIconUrl(String baseUrl, dynamic manifestIcons, dynamic pageIcons) {
+  static List<String> _bestIconUrls(String baseUrl, dynamic manifestIcons, dynamic pageIcons) {
     final candidates = <Map<String, dynamic>>[];
     if (manifestIcons is List) {
       for (final icon in manifestIcons) {
         if (icon is Map && icon['src'] != null) {
+          final src = icon['src'].toString().trim();
+          if (src.isEmpty || _looksLikeSvg(src)) continue;
           candidates.add({
-            'href': icon['src'].toString(),
+            'href': src,
             'sizes': icon['sizes']?.toString() ?? '',
             'priority': 0,
           });
@@ -368,30 +412,108 @@ class WebAppInstallerController extends ChangeNotifier {
       for (final icon in pageIcons) {
         if (icon is Map && icon['href'] != null) {
           final rel = icon['rel']?.toString().toLowerCase() ?? '';
+          final href = icon['href'].toString().trim();
+          if (href.isEmpty || _looksLikeSvg(href)) continue;
           candidates.add({
-            'href': icon['href'].toString(),
+            'href': href,
             'sizes': icon['sizes']?.toString() ?? '',
-            'priority': rel.contains('apple') ? 1 : 2,
+            'priority': rel.contains('apple-touch-icon')
+                ? 1
+                : rel.contains('mask-icon')
+                    ? 2
+                    : rel.contains('shortcut')
+                        ? 4
+                        : 3,
           });
         }
       }
     }
-    if (candidates.isEmpty) {
-      final uri = Uri.tryParse(baseUrl);
-      return uri == null ? null : uri.resolve('/favicon.ico').toString();
-    }
     candidates.sort((a, b) {
       final priority = (a['priority'] as int).compareTo(b['priority'] as int);
       if (priority != 0) return priority;
-      return _largestIconSize(b['sizes'] as String).compareTo(_largestIconSize(a['sizes'] as String));
+      final aScore = _iconScore(a['href'] as String, a['sizes'] as String);
+      final bScore = _iconScore(b['href'] as String, b['sizes'] as String);
+      return bScore.compareTo(aScore);
     });
-    return _resolveUrl(baseUrl, candidates.first['href'] as String);
+    final urls = <String>[];
+    for (final candidate in candidates) {
+      final resolved = _resolveUrl(baseUrl, candidate['href'] as String);
+      if (!urls.contains(resolved)) urls.add(resolved);
+    }
+    final uri = Uri.tryParse(baseUrl);
+    if (uri != null) {
+      for (final fallback in [
+        '/apple-touch-icon.png',
+        '/favicon-512x512.png',
+        '/favicon-192x192.png',
+        '/favicon.ico',
+      ]) {
+        final resolved = uri.resolve(fallback).toString();
+        if (!urls.contains(resolved)) urls.add(resolved);
+      }
+    }
+    return urls;
   }
 
   static int _largestIconSize(String sizes) {
     final matches = RegExp(r'(\d+)x(\d+)').allMatches(sizes);
     if (matches.isEmpty) return 0;
     return matches.map((m) => int.tryParse(m.group(1) ?? '') ?? 0).fold(0, max);
+  }
+
+  static int _iconScore(String href, String sizes) {
+    final size = _largestIconSize(sizes);
+    final lower = href.toLowerCase();
+    var score = size;
+    if (size >= 512) score += 5000;
+    if (size >= 192) score += 3000;
+    if (lower.endsWith('.png')) score += 400;
+    if (lower.endsWith('.webp')) score += 350;
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) score += 300;
+    if (lower.endsWith('.ico')) score -= 500;
+    if (lower.contains('512')) score += 250;
+    if (lower.contains('192')) score += 200;
+    return score;
+  }
+
+  static bool _looksLikeSvg(String url) => url.toLowerCase().split('?').first.endsWith('.svg');
+
+  static bool _isBlankImage(img.Image image) {
+    final sampleStepX = max(1, image.width ~/ 24);
+    final sampleStepY = max(1, image.height ~/ 24);
+    var visible = 0;
+    var varied = 0;
+    int? first;
+    for (var y = 0; y < image.height; y += sampleStepY) {
+      for (var x = 0; x < image.width; x += sampleStepX) {
+        final pixel = image.getPixel(x, y);
+        final alpha = pixel.a.toInt();
+        if (alpha > 12) visible++;
+        final argb = (alpha << 24) |
+            (pixel.r.toInt() << 16) |
+            (pixel.g.toInt() << 8) |
+            pixel.b.toInt();
+        first ??= argb;
+        if (argb != first) varied++;
+      }
+    }
+    return visible < 6 || varied < 2;
+  }
+
+  static img.Image _makeLauncherIcon(img.Image source) {
+    final cropSize = min(source.width, source.height);
+    final cropped = img.copyCrop(
+      source,
+      x: ((source.width - cropSize) / 2).round(),
+      y: ((source.height - cropSize) / 2).round(),
+      width: cropSize,
+      height: cropSize,
+    );
+    final resized = img.copyResize(cropped, width: 168, height: 168, interpolation: img.Interpolation.cubic);
+    final output = img.Image(width: 192, height: 192, numChannels: 4);
+    img.fill(output, color: img.ColorRgba8(255, 255, 255, 255));
+    img.compositeImage(output, resized, dstX: 12, dstY: 12);
+    return output;
   }
 
   static String? _cleanName(String? raw) {
