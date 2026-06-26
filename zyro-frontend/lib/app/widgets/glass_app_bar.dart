@@ -326,7 +326,7 @@ class _WebAppInstallDialog extends StatelessWidget {
               Text(
                 isInstalled
                     ? 'Already installed'
-                    : 'Install ${candidate.name}?',
+                    : 'Add ${candidate.name} to Home Screen?',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
                   fontSize: 22,
@@ -337,7 +337,9 @@ class _WebAppInstallDialog extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                candidate.domain,
+                isInstalled
+                    ? candidate.domain
+                    : 'This creates a home screen shortcut that opens inside Zyro Browser.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
                   fontSize: 14,
@@ -345,7 +347,19 @@ class _WebAppInstallDialog extends StatelessWidget {
                   color: colorScheme.onSurface.withValues(alpha: 0.58),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 10),
+              Text(
+                candidate.startUrl,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.outfit(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.primary.withValues(alpha: 0.78),
+                ),
+              ),
+              const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -358,7 +372,7 @@ class _WebAppInstallDialog extends StatelessWidget {
                 child: Text(
                   isInstalled
                       ? '${existing!.name} is already saved in Zyro Apps.'
-                      : 'This will save the website in Zyro Apps and request Android to add a shortcut on your home screen. You may see a final Android confirmation before the shortcut is added.',
+                      : 'Android will show one final confirmation to place the shortcut on your home screen.',
                   style: GoogleFonts.outfit(
                     fontSize: 13,
                     height: 1.35,
@@ -386,20 +400,20 @@ class _WebAppInstallDialog extends StatelessWidget {
                   child: const Column(
                     children: [
                       _InstallInfoRow(
-                        icon: LucideIcons.smartphone,
-                        text: 'Creates a home screen shortcut',
-                      ),
-                      _InstallInfoRow(
-                        icon: LucideIcons.layoutGrid,
-                        text: 'Saves inside Zyro Apps',
-                      ),
-                      _InstallInfoRow(
                         icon: LucideIcons.compass,
                         text: 'Opens inside Zyro Browser',
                       ),
                       _InstallInfoRow(
+                        icon: LucideIcons.layoutGrid,
+                        text: 'Saved in Zyro Apps',
+                      ),
+                      _InstallInfoRow(
+                        icon: LucideIcons.wifi,
+                        text: 'Requires internet access',
+                      ),
+                      _InstallInfoRow(
                         icon: LucideIcons.trash2,
-                        text: 'Can be removed later',
+                        text: 'Can be removed anytime',
                       ),
                     ],
                   ),

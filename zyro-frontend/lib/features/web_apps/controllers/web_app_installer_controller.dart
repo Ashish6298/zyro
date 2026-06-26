@@ -27,8 +27,11 @@ class InstalledWebApp {
   final String? backgroundColor;
   final String? displayMode;
   final String shortcutId;
+  final bool homeScreenShortcutCreated;
+  final bool pendingShortcutConfirmation;
   final DateTime installedAt;
   final DateTime? lastOpenedAt;
+  final DateTime? lastShortcutSyncAt;
 
   const InstalledWebApp({
     required this.id,
@@ -44,8 +47,11 @@ class InstalledWebApp {
     this.backgroundColor,
     this.displayMode,
     required this.shortcutId,
+    this.homeScreenShortcutCreated = false,
+    this.pendingShortcutConfirmation = false,
     required this.installedAt,
     this.lastOpenedAt,
+    this.lastShortcutSyncAt,
   });
 
   Map<String, dynamic> toMap() => {
@@ -62,8 +68,11 @@ class InstalledWebApp {
     'backgroundColor': backgroundColor,
     'displayMode': displayMode,
     'shortcutId': shortcutId,
+    'homeScreenShortcutCreated': homeScreenShortcutCreated,
+    'pendingShortcutConfirmation': pendingShortcutConfirmation,
     'installedAt': installedAt.toIso8601String(),
     'lastOpenedAt': lastOpenedAt?.toIso8601String(),
+    'lastShortcutSyncAt': lastShortcutSyncAt?.toIso8601String(),
   };
 
   factory InstalledWebApp.fromMap(Map<String, dynamic> map) {
@@ -84,10 +93,18 @@ class InstalledWebApp {
       displayMode: map['displayMode'] as String?,
       shortcutId:
           map['shortcutId'] as String? ?? _webAppShortcutIdForUrl(startUrl),
+      homeScreenShortcutCreated:
+          map['homeScreenShortcutCreated'] as bool? ??
+          ((map['shortcutId'] as String?)?.isNotEmpty == true),
+      pendingShortcutConfirmation:
+          map['pendingShortcutConfirmation'] as bool? ?? false,
       installedAt:
           DateTime.tryParse(map['installedAt'] as String? ?? '') ??
           DateTime.now(),
       lastOpenedAt: DateTime.tryParse(map['lastOpenedAt'] as String? ?? ''),
+      lastShortcutSyncAt: DateTime.tryParse(
+        map['lastShortcutSyncAt'] as String? ?? '',
+      ),
     );
   }
 }
@@ -134,8 +151,12 @@ class WebAppInstallResult {
 
 class WebAppInstallerController extends ChangeNotifier {
   static const _key = 'zyro_installed_web_apps';
+  static const _observedPinnedShortcutKey =
+      'zyro_web_apps_observed_pinned_shortcut';
 
   List<InstalledWebApp> _apps = [];
+  bool _syncInProgress = false;
+  bool _hasObservedPinnedShortcut = false;
 
   List<InstalledWebApp> get apps => List.unmodifiable(_apps);
 
@@ -278,6 +299,8 @@ class WebAppInstallerController extends ChangeNotifier {
       backgroundColor: candidate.backgroundColor,
       displayMode: candidate.displayMode,
       shortcutId: _webAppShortcutIdForUrl(candidate.startUrl),
+      homeScreenShortcutCreated: false,
+      pendingShortcutConfirmation: true,
       installedAt: DateTime.now(),
     );
 
@@ -293,10 +316,21 @@ class WebAppInstallerController extends ChangeNotifier {
       iconPath: app.localIconPath,
     );
     final supported = shortcut['supported'] != false;
+    final requested = shortcut['requested'] == true;
+    final index = _apps.indexWhere((item) => item.id == app.id);
+    if (index != -1) {
+      _apps[index] = _copyInstalledApp(
+        _apps[index],
+        homeScreenShortcutCreated: false,
+        pendingShortcutConfirmation: supported && requested,
+      );
+      await _save();
+    }
     if (kDebugMode) {
       debugPrint('[WEB APPS] Shortcut pin supported=$supported');
       debugPrint('[WEB APPS] Shortcut pin requested');
     }
+    await syncInstalledAppsWithPinnedShortcuts();
 
     return WebAppInstallResult(
       app: app,
@@ -325,15 +359,21 @@ class WebAppInstallerController extends ChangeNotifier {
       backgroundColor: app.backgroundColor,
       displayMode: app.displayMode,
       shortcutId: app.shortcutId,
+      homeScreenShortcutCreated: app.homeScreenShortcutCreated,
+      pendingShortcutConfirmation: app.pendingShortcutConfirmation,
       installedAt: app.installedAt,
       lastOpenedAt: DateTime.now(),
+      lastShortcutSyncAt: app.lastShortcutSyncAt,
     );
     await _save();
     notifyListeners();
   }
 
   Future<void> _load() async {
-    final raw = (await SharedPreferences.getInstance()).getString(_key);
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_key);
+    _hasObservedPinnedShortcut =
+        prefs.getBool(_observedPinnedShortcutKey) ?? false;
     if (raw != null) {
       _apps = (jsonDecode(raw) as List)
           .map(
@@ -342,12 +382,154 @@ class WebAppInstallerController extends ChangeNotifier {
           .toList();
     }
     notifyListeners();
+    await syncInstalledAppsWithPinnedShortcuts();
   }
 
   Future<void> _save() async {
     await (await SharedPreferences.getInstance()).setString(
       _key,
       jsonEncode(_apps.map((app) => app.toMap()).toList()),
+    );
+  }
+
+  Future<void> syncInstalledAppsWithPinnedShortcuts() async {
+    if (_syncInProgress) return;
+    if (_apps.isEmpty) return;
+    _syncInProgress = true;
+    if (kDebugMode) debugPrint('[WEB APPS] Shortcut sync started');
+
+    try {
+      final result = await WebAppShortcutChannel.getPinnedShortcutIds();
+      if (!result.supported) {
+        if (kDebugMode) {
+          debugPrint(
+            '[WEB APPS] Unsupported launcher shortcut query, skipping sync',
+          );
+        }
+        return;
+      }
+
+      final pinnedIds = result.ids.toSet();
+      if (kDebugMode) {
+        debugPrint(
+          '[WEB APPS] Pinned shortcut ids fetched: ${pinnedIds.toList()}',
+        );
+      }
+
+      final installedShortcutIds = _apps.map((app) => app.shortcutId).toSet();
+      final observedKnownPinnedShortcut = pinnedIds
+          .intersection(installedShortcutIds)
+          .isNotEmpty;
+      if (observedKnownPinnedShortcut && !_hasObservedPinnedShortcut) {
+        _hasObservedPinnedShortcut = true;
+        await (await SharedPreferences.getInstance()).setBool(
+          _observedPinnedShortcutKey,
+          true,
+        );
+      }
+
+      if (pinnedIds.isEmpty && !_hasObservedPinnedShortcut) {
+        if (kDebugMode) {
+          debugPrint('[WEB APPS] Shortcut sync failed, no apps removed');
+        }
+        return;
+      }
+
+      final now = DateTime.now();
+      final syncedApps = <InstalledWebApp>[];
+      var changed = false;
+
+      for (final app in _apps) {
+        if (kDebugMode) {
+          debugPrint(
+            '[WEB APPS] Installed app shortcut id checked: ${app.shortcutId}',
+          );
+        }
+
+        final shortcutExists = pinnedIds.contains(app.shortcutId);
+        if (shortcutExists) {
+          if (kDebugMode) {
+            debugPrint(
+              '[WEB APPS] Shortcut still exists, keeping installed web app: ${app.name}',
+            );
+          }
+          syncedApps.add(
+            _copyInstalledApp(
+              app,
+              homeScreenShortcutCreated: true,
+              pendingShortcutConfirmation: false,
+              lastShortcutSyncAt: now,
+            ),
+          );
+          if (!app.homeScreenShortcutCreated ||
+              app.pendingShortcutConfirmation ||
+              app.lastShortcutSyncAt == null) {
+            changed = true;
+          }
+          continue;
+        }
+
+        if (app.pendingShortcutConfirmation || !app.homeScreenShortcutCreated) {
+          syncedApps.add(_copyInstalledApp(app, lastShortcutSyncAt: now));
+          changed = true;
+          if (kDebugMode) {
+            debugPrint(
+              '[WEB APPS] Shortcut still pending, keeping installed web app: ${app.name}',
+            );
+          }
+          continue;
+        }
+
+        if (kDebugMode) {
+          debugPrint(
+            '[WEB APPS] Shortcut missing, removing installed web app: ${app.name}',
+          );
+        }
+        changed = true;
+      }
+
+      if (changed) {
+        _apps = syncedApps;
+        await _save();
+        notifyListeners();
+      }
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('[WEB APPS] Shortcut sync failed, no apps removed: $error');
+      }
+    } finally {
+      _syncInProgress = false;
+    }
+  }
+
+  InstalledWebApp _copyInstalledApp(
+    InstalledWebApp app, {
+    bool? homeScreenShortcutCreated,
+    bool? pendingShortcutConfirmation,
+    DateTime? lastOpenedAt,
+    DateTime? lastShortcutSyncAt,
+  }) {
+    return InstalledWebApp(
+      id: app.id,
+      name: app.name,
+      shortName: app.shortName,
+      domain: app.domain,
+      startUrl: app.startUrl,
+      scope: app.scope,
+      iconUrl: app.iconUrl,
+      iconUrls: app.iconUrls,
+      localIconPath: app.localIconPath,
+      themeColor: app.themeColor,
+      backgroundColor: app.backgroundColor,
+      displayMode: app.displayMode,
+      shortcutId: app.shortcutId,
+      homeScreenShortcutCreated:
+          homeScreenShortcutCreated ?? app.homeScreenShortcutCreated,
+      pendingShortcutConfirmation:
+          pendingShortcutConfirmation ?? app.pendingShortcutConfirmation,
+      installedAt: app.installedAt,
+      lastOpenedAt: lastOpenedAt ?? app.lastOpenedAt,
+      lastShortcutSyncAt: lastShortcutSyncAt ?? app.lastShortcutSyncAt,
     );
   }
 
@@ -553,6 +735,8 @@ class WebAppInstallerController extends ChangeNotifier {
   }
 
   static img.Image _makeLauncherIcon(img.Image source) {
+    const size = 512;
+    const padding = 56;
     final cropSize = min(source.width, source.height);
     final cropped = img.copyCrop(
       source,
@@ -563,13 +747,13 @@ class WebAppInstallerController extends ChangeNotifier {
     );
     final resized = img.copyResize(
       cropped,
-      width: 168,
-      height: 168,
+      width: size - (padding * 2),
+      height: size - (padding * 2),
       interpolation: img.Interpolation.cubic,
     );
-    final output = img.Image(width: 192, height: 192, numChannels: 4);
-    img.fill(output, color: img.ColorRgba8(255, 255, 255, 255));
-    img.compositeImage(output, resized, dstX: 12, dstY: 12);
+    final output = img.Image(width: size, height: size, numChannels: 4);
+    img.fill(output, color: img.ColorRgba8(244, 246, 255, 255));
+    img.compositeImage(output, resized, dstX: padding, dstY: padding);
     return output;
   }
 

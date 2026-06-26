@@ -1,5 +1,12 @@
 import 'package:flutter/services.dart';
 
+class PinnedShortcutIdsResult {
+  final bool supported;
+  final List<String> ids;
+
+  const PinnedShortcutIdsResult({required this.supported, required this.ids});
+}
+
 class WebAppShortcutChannel {
   static const MethodChannel _channel = MethodChannel('zyro/web_apps');
 
@@ -11,14 +18,23 @@ class WebAppShortcutChannel {
   }) async {
     final result = await _channel.invokeMapMethod<String, dynamic>(
       'pinWebAppShortcut',
-      {
-        'id': id,
-        'name': name,
-        'url': url,
-        'iconPath': iconPath,
-      },
+      {'id': id, 'name': name, 'url': url, 'iconPath': iconPath},
     );
     return result ?? const <String, dynamic>{};
+  }
+
+  static Future<PinnedShortcutIdsResult> getPinnedShortcutIds() async {
+    final result = await _channel.invokeMapMethod<String, dynamic>(
+      'getPinnedShortcutIds',
+    );
+    if (result == null) {
+      return const PinnedShortcutIdsResult(supported: false, ids: []);
+    }
+    final ids = (result['ids'] as List?)?.whereType<String>().toList() ?? [];
+    return PinnedShortcutIdsResult(
+      supported: result['supported'] == true,
+      ids: ids,
+    );
   }
 
   static Future<String?> getInitialShortcutUrl() {

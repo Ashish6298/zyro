@@ -65,6 +65,7 @@ class MainActivity : FlutterActivity() {
         webAppChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
                 "pinWebAppShortcut" -> pinWebAppShortcut(call, result)
+                "getPinnedShortcutIds" -> getPinnedShortcutIds(result)
                 "getInitialShortcutUrl" -> result.success(initialShortcutUrl)
                 else -> result.notImplemented()
             }
@@ -220,7 +221,9 @@ class MainActivity : FlutterActivity() {
         }
 
         val id = call.argument<String>("id") ?: "zyro_webapp_${System.currentTimeMillis()}"
-        val name = (call.argument<String>("name") ?: "Zyro App").take(40)
+        val name = cleanShortcutLabel(call.argument<String>("name") ?: "Zyro App", 40)
+        val shortLabel = cleanShortcutLabel(name, 10)
+        val longLabel = buildShortcutLongLabel(name)
         val url = call.argument<String>("url") ?: run {
             result.error("INVALID_URL", "Missing web app URL", null)
             return
@@ -241,18 +244,42 @@ class MainActivity : FlutterActivity() {
 
         val iconBitmap = decodeShortcutIcon(name, iconPath)
         val shortcut = ShortcutInfo.Builder(this, id)
-            .setShortLabel(name)
-            .setLongLabel(name)
+            .setShortLabel(shortLabel)
+            .setLongLabel(longLabel)
             .setIcon(Icon.createWithBitmap(iconBitmap))
             .setIntent(launchIntent)
             .build()
 
         try {
-            shortcutManager.requestPinShortcut(shortcut, null)
+            val requested = shortcutManager.requestPinShortcut(shortcut, null)
             android.util.Log.d("WEB_APPS", "Shortcut created/requested")
-            result.success(mapOf("supported" to true, "requested" to true))
+            result.success(mapOf("supported" to true, "requested" to requested))
         } catch (error: Exception) {
             result.error("SHORTCUT_FAILED", error.message ?: "Unable to pin shortcut", null)
+        }
+    }
+
+    private fun getPinnedShortcutIds(result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            android.util.Log.d("WEB_APPS", "Unsupported launcher shortcut query, skipping sync")
+            result.success(mapOf("supported" to false, "ids" to emptyList<String>()))
+            return
+        }
+
+        try {
+            val shortcutManager = getSystemService(ShortcutManager::class.java)
+            if (shortcutManager == null) {
+                android.util.Log.d("WEB_APPS", "Unsupported launcher shortcut query, skipping sync")
+                result.success(mapOf("supported" to false, "ids" to emptyList<String>()))
+                return
+            }
+
+            val pinnedIds = shortcutManager.pinnedShortcuts.map { it.id }
+            android.util.Log.d("WEB_APPS", "Pinned shortcut ids fetched: $pinnedIds")
+            result.success(mapOf("supported" to true, "ids" to pinnedIds))
+        } catch (error: Exception) {
+            android.util.Log.e("WEB_APPS", "Shortcut sync failed, no apps removed", error)
+            result.success(mapOf("supported" to false, "ids" to emptyList<String>()))
         }
     }
 
@@ -261,10 +288,11 @@ class MainActivity : FlutterActivity() {
             val raw = BitmapFactory.decodeFile(iconPath)
             if (raw != null) {
                 android.util.Log.d("WEB_APPS", "Decoded shortcut bitmap size=${raw.width}x${raw.height}")
-                val normalized = normalizeShortcutBitmap(raw)
-                val blank = isBlankBitmap(normalized)
-                android.util.Log.d("WEB_APPS", "Shortcut bitmap blank=$blank")
-                if (!blank) {
+                val sourceBlank = isBlankBitmap(raw)
+                val sourceTooSmall = raw.width < 32 || raw.height < 32
+                android.util.Log.d("WEB_APPS", "Shortcut source bitmap blank=$sourceBlank tooSmall=$sourceTooSmall")
+                if (!sourceBlank && !sourceTooSmall) {
+                    val normalized = normalizeShortcutBitmap(raw)
                     android.util.Log.d("WEB_APPS", "Shortcut created with real icon")
                     return normalized
                 }
@@ -277,17 +305,18 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun normalizeShortcutBitmap(source: Bitmap): Bitmap {
-        val size = 192
+        val size = 512
+        val padding = 56f
         val output = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(output)
-        val background = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
-        canvas.drawRoundRect(0f, 0f, size.toFloat(), size.toFloat(), 42f, 42f, background)
+        val background = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(244, 246, 255) }
+        canvas.drawRoundRect(0f, 0f, size.toFloat(), size.toFloat(), 112f, 112f, background)
 
         val crop = source.width.coerceAtMost(source.height).coerceAtLeast(1)
         val left = ((source.width - crop) / 2f).coerceAtLeast(0f)
         val top = ((source.height - crop) / 2f).coerceAtLeast(0f)
         val src = RectF(left, top, left + crop, top + crop)
-        val dst = RectF(14f, 14f, size - 14f, size - 14f)
+        val dst = RectF(padding, padding, size - padding, size - padding)
         val matrix = Matrix().apply { setRectToRect(src, dst, Matrix.ScaleToFit.CENTER) }
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG)
         canvas.drawBitmap(source, matrix, paint)
@@ -323,21 +352,39 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun createFallbackIcon(name: String): Bitmap {
-        val size = 192
+        val size = 512
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val background = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(91, 79, 242) }
-        canvas.drawRoundRect(0f, 0f, size.toFloat(), size.toFloat(), 42f, 42f, background)
+        canvas.drawRoundRect(0f, 0f, size.toFloat(), size.toFloat(), 112f, 112f, background)
+        val accent = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(22, 197, 178) }
+        canvas.drawCircle(size * 0.78f, size * 0.22f, size * 0.18f, accent)
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
             textAlign = Paint.Align.CENTER
-            textSize = 86f
+            textSize = 220f
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
         val letter = name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "Z"
         val y = size / 2f - (text.descent() + text.ascent()) / 2f
         canvas.drawText(letter, size / 2f, y, text)
         return bitmap
+    }
+
+    private fun cleanShortcutLabel(raw: String, maxLength: Int): String {
+        val cleaned = raw.trim().replace(Regex("\\s+"), " ")
+        val label = if (cleaned.isBlank() || cleaned.equals("Zyro App", ignoreCase = true)) {
+            "Web App"
+        } else {
+            cleaned
+        }
+        return label.take(maxLength).trim().ifBlank { "Web App" }
+    }
+
+    private fun buildShortcutLongLabel(name: String): String {
+        val label = cleanShortcutLabel(name, 40)
+        val withBrowser = "$label - Zyro Browser"
+        return if (withBrowser.length <= 40) withBrowser else label
     }
 
     private fun enqueueDownload(call: MethodCall, result: MethodChannel.Result) {

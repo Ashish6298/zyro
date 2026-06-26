@@ -80,8 +80,8 @@ class WebAppShortcutLaunchBridge extends StatefulWidget {
       _WebAppShortcutLaunchBridgeState();
 }
 
-class _WebAppShortcutLaunchBridgeState
-    extends State<WebAppShortcutLaunchBridge> {
+class _WebAppShortcutLaunchBridgeState extends State<WebAppShortcutLaunchBridge>
+    with WidgetsBindingObserver {
   bool _initialized = false;
   TabManager? _tabManager;
   String? _pendingShortcutUrl;
@@ -95,6 +95,14 @@ class _WebAppShortcutLaunchBridgeState
     _initialized = true;
     _tabManager = context.read<TabManager>()
       ..addListener(_flushPendingShortcutUrl);
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context
+            .read<WebAppInstallerController>()
+            .syncInstalledAppsWithPinnedShortcuts();
+      }
+    });
 
     WebAppShortcutChannel.listenForShortcutLaunches(_queueShortcutUrl);
     WebAppShortcutChannel.getInitialShortcutUrl().then((url) {
@@ -104,8 +112,17 @@ class _WebAppShortcutLaunchBridgeState
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tabManager?.removeListener(_flushPendingShortcutUrl);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !mounted) return;
+    context
+        .read<WebAppInstallerController>()
+        .syncInstalledAppsWithPinnedShortcuts();
   }
 
   void _queueShortcutUrl(String url) {
