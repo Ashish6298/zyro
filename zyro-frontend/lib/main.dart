@@ -64,9 +64,8 @@ class ZyroApp extends StatelessWidget {
       darkTheme: isIncognito ? AppTheme.incognitoTheme : AppTheme.darkTheme,
       themeMode: isIncognito ? ThemeMode.dark : themeController.themeMode,
       home: const SplashScreen(),
-      builder: (context, child) => WebAppShortcutLaunchBridge(
-        child: child ?? const SizedBox.shrink(),
-      ),
+      builder: (context, child) =>
+          WebAppShortcutLaunchBridge(child: child ?? const SizedBox.shrink()),
     );
   }
 }
@@ -77,34 +76,89 @@ class WebAppShortcutLaunchBridge extends StatefulWidget {
   const WebAppShortcutLaunchBridge({super.key, required this.child});
 
   @override
-  State<WebAppShortcutLaunchBridge> createState() => _WebAppShortcutLaunchBridgeState();
+  State<WebAppShortcutLaunchBridge> createState() =>
+      _WebAppShortcutLaunchBridgeState();
 }
 
-class _WebAppShortcutLaunchBridgeState extends State<WebAppShortcutLaunchBridge> {
+class _WebAppShortcutLaunchBridgeState
+    extends State<WebAppShortcutLaunchBridge> {
   bool _initialized = false;
+  TabManager? _tabManager;
+  String? _pendingShortcutUrl;
+  String? _lastOpenedShortcutUrl;
+  DateTime? _lastOpenedShortcutAt;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_initialized) return;
     _initialized = true;
+    _tabManager = context.read<TabManager>()
+      ..addListener(_flushPendingShortcutUrl);
 
-    WebAppShortcutChannel.listenForShortcutLaunches(_openShortcutUrl);
+    WebAppShortcutChannel.listenForShortcutLaunches(_queueShortcutUrl);
     WebAppShortcutChannel.getInitialShortcutUrl().then((url) {
-      if (url != null && url.isNotEmpty) {
-        Future.delayed(const Duration(milliseconds: 4800), () => _openShortcutUrl(url));
-      }
+      if (url != null && url.isNotEmpty) _queueShortcutUrl(url);
     });
   }
 
-  void _openShortcutUrl(String url) {
+  @override
+  void dispose() {
+    _tabManager?.removeListener(_flushPendingShortcutUrl);
+    super.dispose();
+  }
+
+  void _queueShortcutUrl(String url) {
     if (!mounted) return;
+    final normalizedUrl = url.trim();
+    if (!_isValidShortcutUrl(normalizedUrl)) {
+      debugPrint(
+        '[WEB APPS] Invalid shortcut URL fallback to normal launch: $url',
+      );
+      return;
+    }
+    final lastOpenedAt = _lastOpenedShortcutAt;
+    final recentlyOpenedSameUrl =
+        _lastOpenedShortcutUrl == normalizedUrl &&
+        lastOpenedAt != null &&
+        DateTime.now().difference(lastOpenedAt) < const Duration(seconds: 2);
+    if (_pendingShortcutUrl == normalizedUrl || recentlyOpenedSameUrl) {
+      return;
+    }
+
+    debugPrint(
+      '[WEB APPS] Flutter received web app shortcut URL: $normalizedUrl',
+    );
+    _pendingShortcutUrl = normalizedUrl;
+    _flushPendingShortcutUrl();
+  }
+
+  void _flushPendingShortcutUrl() {
+    if (!mounted) return;
+    final url = _pendingShortcutUrl;
+    final tabManager = _tabManager;
+    if (url == null || tabManager == null) return;
+    if (!tabManager.sessionReady) return;
+
+    debugPrint('[WEB APPS] TabManager ready');
+    _pendingShortcutUrl = null;
+    _lastOpenedShortcutUrl = url;
+    _lastOpenedShortcutAt = DateTime.now();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      debugPrint('[WEB APPS] Opening web app URL in browser tab: $url');
       context.read<TabManager>().addNewTab(url: url);
       context.read<WebAppInstallerController>().markOpened(url);
       debugPrint('[WEB APPS] Web app opened from shortcut');
     });
+  }
+
+  bool _isValidShortcutUrl(String url) {
+    final uri = Uri.tryParse(url);
+    return uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.isNotEmpty;
   }
 
   @override

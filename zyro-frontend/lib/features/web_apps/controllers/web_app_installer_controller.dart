@@ -49,21 +49,22 @@ class InstalledWebApp {
   });
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'name': name,
-        'shortName': shortName,
-        'domain': domain,
-        'startUrl': startUrl,
-        'scope': scope,
-        'iconUrl': iconUrl,
-        'localIconPath': localIconPath,
-        'themeColor': themeColor,
-        'backgroundColor': backgroundColor,
-        'displayMode': displayMode,
-        'shortcutId': shortcutId,
-        'installedAt': installedAt.toIso8601String(),
-        'lastOpenedAt': lastOpenedAt?.toIso8601String(),
-      };
+    'id': id,
+    'name': name,
+    'shortName': shortName,
+    'domain': domain,
+    'startUrl': startUrl,
+    'scope': scope,
+    'iconUrl': iconUrl,
+    'iconUrls': iconUrls,
+    'localIconPath': localIconPath,
+    'themeColor': themeColor,
+    'backgroundColor': backgroundColor,
+    'displayMode': displayMode,
+    'shortcutId': shortcutId,
+    'installedAt': installedAt.toIso8601String(),
+    'lastOpenedAt': lastOpenedAt?.toIso8601String(),
+  };
 
   factory InstalledWebApp.fromMap(Map<String, dynamic> map) {
     final startUrl = map['startUrl'] as String? ?? '';
@@ -75,12 +76,16 @@ class InstalledWebApp {
       startUrl: startUrl,
       scope: map['scope'] as String?,
       iconUrl: map['iconUrl'] as String?,
+      iconUrls:
+          (map['iconUrls'] as List?)?.whereType<String>().toList() ?? const [],
       localIconPath: map['localIconPath'] as String?,
       themeColor: map['themeColor'] as String?,
       backgroundColor: map['backgroundColor'] as String?,
       displayMode: map['displayMode'] as String?,
-      shortcutId: map['shortcutId'] as String? ?? _webAppShortcutIdForUrl(startUrl),
-      installedAt: DateTime.tryParse(map['installedAt'] as String? ?? '') ??
+      shortcutId:
+          map['shortcutId'] as String? ?? _webAppShortcutIdForUrl(startUrl),
+      installedAt:
+          DateTime.tryParse(map['installedAt'] as String? ?? '') ??
           DateTime.now(),
       lastOpenedAt: DateTime.tryParse(map['lastOpenedAt'] as String? ?? ''),
     );
@@ -94,6 +99,7 @@ class WebAppInstallCandidate {
   final String startUrl;
   final String? scope;
   final String? iconUrl;
+  final List<String> iconUrls;
   final String? themeColor;
   final String? backgroundColor;
   final String? displayMode;
@@ -105,6 +111,7 @@ class WebAppInstallCandidate {
     required this.startUrl,
     this.scope,
     this.iconUrl,
+    this.iconUrls = const [],
     this.themeColor,
     this.backgroundColor,
     this.displayMode,
@@ -144,7 +151,8 @@ class WebAppInstallerController extends ChangeNotifier {
 
     Map<String, dynamic> page = const {};
     try {
-      final result = await tab.controller?.evaluateJavascript(source: '''
+      final result = await tab.controller?.evaluateJavascript(
+        source: '''
 (function() {
   function attr(selector, name) {
     var el = document.querySelector(selector);
@@ -167,12 +175,14 @@ class WebAppInstallerController extends ChangeNotifier {
     icons: icons
   });
 })()
-''');
+''',
+      );
       if (result is String && result.isNotEmpty) {
         page = Map<String, dynamic>.from(jsonDecode(result));
       }
     } catch (error) {
-      if (kDebugMode) debugPrint('[WEB APPS] Page metadata detection failed: $error');
+      if (kDebugMode)
+        debugPrint('[WEB APPS] Page metadata detection failed: $error');
     }
 
     Map<String, dynamic> manifest = const {};
@@ -194,7 +204,8 @@ class WebAppInstallerController extends ChangeNotifier {
 
     final manifestName = _cleanName(manifest['name'] as String?);
     final manifestShortName = _cleanName(manifest['short_name'] as String?);
-    final name = manifestName ??
+    final name =
+        manifestName ??
         manifestShortName ??
         _cleanName(page['ogSiteName'] as String?) ??
         _cleanName(page['applicationName'] as String?) ??
@@ -202,32 +213,39 @@ class WebAppInstallerController extends ChangeNotifier {
         _cleanName(page['title'] as String?) ??
         _titleCaseDomain(domain);
     if (kDebugMode) {
-      debugPrint(manifestName != null
-          ? '[WEB APPS] Manifest name found: $manifestName'
-          : '[WEB APPS] Fallback name used: $name');
+      debugPrint(
+        manifestName != null
+            ? '[WEB APPS] Manifest name found: $manifestName'
+            : '[WEB APPS] Fallback name used: $name',
+      );
       debugPrint('[WEB APPS] Real app name detected: $name');
     }
 
     final startUrl = _resolveUrl(url, manifest['start_url'] as String? ?? url);
     final iconUrls = _bestIconUrls(url, manifest['icons'], page['icons']);
     final iconUrl = iconUrls.isEmpty ? null : iconUrls.first;
-    if (kDebugMode) debugPrint('[WEB APPS] Best icon selected: ${iconUrl ?? 'fallback'}');
+    if (kDebugMode)
+      debugPrint('[WEB APPS] Best icon selected: ${iconUrl ?? 'fallback'}');
 
     return WebAppInstallCandidate(
       name: name,
       shortName: manifestShortName,
       domain: domain,
       startUrl: startUrl,
-      scope: manifest['scope'] == null ? null : _resolveUrl(url, manifest['scope'] as String),
+      scope: manifest['scope'] == null
+          ? null
+          : _resolveUrl(url, manifest['scope'] as String),
       iconUrl: iconUrl,
       iconUrls: iconUrls,
-      themeColor: manifest['theme_color'] as String? ?? page['themeColor'] as String?,
+      themeColor:
+          manifest['theme_color'] as String? ?? page['themeColor'] as String?,
       backgroundColor: manifest['background_color'] as String?,
       displayMode: manifest['display'] as String?,
     );
   }
 
-  bool installed(String url) => _apps.any((app) => _sameInstallTarget(app.startUrl, url));
+  bool installed(String url) =>
+      _apps.any((app) => _sameInstallTarget(app.startUrl, url));
 
   InstalledWebApp? appForUrl(String url) {
     try {
@@ -237,7 +255,9 @@ class WebAppInstallerController extends ChangeNotifier {
     }
   }
 
-  Future<WebAppInstallResult> installCandidate(WebAppInstallCandidate candidate) async {
+  Future<WebAppInstallResult> installCandidate(
+    WebAppInstallCandidate candidate,
+  ) async {
     if (installed(candidate.startUrl)) {
       if (kDebugMode) debugPrint('[WEB APPS] Duplicate install blocked');
       return const WebAppInstallResult(duplicate: true);
@@ -252,6 +272,7 @@ class WebAppInstallerController extends ChangeNotifier {
       startUrl: candidate.startUrl,
       scope: candidate.scope,
       iconUrl: candidate.iconUrl,
+      iconUrls: candidate.iconUrls,
       localIconPath: localIconPath,
       themeColor: candidate.themeColor,
       backgroundColor: candidate.backgroundColor,
@@ -285,7 +306,9 @@ class WebAppInstallerController extends ChangeNotifier {
   }
 
   Future<void> markOpened(String url) async {
-    final index = _apps.indexWhere((app) => _sameInstallTarget(app.startUrl, url));
+    final index = _apps.indexWhere(
+      (app) => _sameInstallTarget(app.startUrl, url),
+    );
     if (index == -1) return;
     final app = _apps[index];
     _apps[index] = InstalledWebApp(
@@ -296,6 +319,7 @@ class WebAppInstallerController extends ChangeNotifier {
       startUrl: app.startUrl,
       scope: app.scope,
       iconUrl: app.iconUrl,
+      iconUrls: app.iconUrls,
       localIconPath: app.localIconPath,
       themeColor: app.themeColor,
       backgroundColor: app.backgroundColor,
@@ -312,43 +336,56 @@ class WebAppInstallerController extends ChangeNotifier {
     final raw = (await SharedPreferences.getInstance()).getString(_key);
     if (raw != null) {
       _apps = (jsonDecode(raw) as List)
-          .map((item) => InstalledWebApp.fromMap(Map<String, dynamic>.from(item)))
+          .map(
+            (item) => InstalledWebApp.fromMap(Map<String, dynamic>.from(item)),
+          )
           .toList();
     }
     notifyListeners();
   }
 
   Future<void> _save() async {
-    await (await SharedPreferences.getInstance())
-        .setString(_key, jsonEncode(_apps.map((app) => app.toMap()).toList()));
+    await (await SharedPreferences.getInstance()).setString(
+      _key,
+      jsonEncode(_apps.map((app) => app.toMap()).toList()),
+    );
   }
 
   Future<String?> _cacheIcon(WebAppInstallCandidate candidate) async {
     final iconUrls = candidate.iconUrls.isNotEmpty
         ? candidate.iconUrls
-        : [
-            if (candidate.iconUrl != null) candidate.iconUrl!,
-          ];
+        : [if (candidate.iconUrl != null) candidate.iconUrl!];
     if (iconUrls.isEmpty) return null;
     try {
-      final dir = Directory(p.join((await getApplicationSupportDirectory()).path, 'web_app_icons'));
+      final dir = Directory(
+        p.join((await getApplicationSupportDirectory()).path, 'web_app_icons'),
+      );
       if (!await dir.exists()) await dir.create(recursive: true);
-      final file = File(p.join(dir.path, '${_webAppIdForUrl(candidate.startUrl)}.png'));
+      final file = File(
+        p.join(dir.path, '${_webAppIdForUrl(candidate.startUrl)}.png'),
+      );
 
       for (final iconUrl in iconUrls) {
         if (_looksLikeSvg(iconUrl)) {
-          if (kDebugMode) debugPrint('[WEB APPS] Icon skipped unsupported SVG: $iconUrl');
+          if (kDebugMode)
+            debugPrint('[WEB APPS] Icon skipped unsupported SVG: $iconUrl');
           continue;
         }
-        if (kDebugMode) debugPrint('[WEB APPS] Icon download started: $iconUrl');
+        if (kDebugMode)
+          debugPrint('[WEB APPS] Icon download started: $iconUrl');
         final response = await http.get(Uri.parse(iconUrl));
         if (response.statusCode < 200 || response.statusCode >= 300) {
-          if (kDebugMode) debugPrint('[WEB APPS] Icon download failed ${response.statusCode}: $iconUrl');
+          if (kDebugMode)
+            debugPrint(
+              '[WEB APPS] Icon download failed ${response.statusCode}: $iconUrl',
+            );
           continue;
         }
-        final contentType = response.headers['content-type']?.toLowerCase() ?? '';
+        final contentType =
+            response.headers['content-type']?.toLowerCase() ?? '';
         if (contentType.contains('svg')) {
-          if (kDebugMode) debugPrint('[WEB APPS] Icon skipped SVG content: $iconUrl');
+          if (kDebugMode)
+            debugPrint('[WEB APPS] Icon skipped SVG content: $iconUrl');
           continue;
         }
         final decoded = img.decodeImage(response.bodyBytes);
@@ -357,14 +394,22 @@ class WebAppInstallerController extends ChangeNotifier {
           continue;
         }
         if (_isBlankImage(decoded)) {
-          if (kDebugMode) debugPrint('[WEB APPS] Icon rejected as blank/transparent: $iconUrl');
+          if (kDebugMode)
+            debugPrint(
+              '[WEB APPS] Icon rejected as blank/transparent: $iconUrl',
+            );
           continue;
         }
         if (kDebugMode) {
-          debugPrint('[WEB APPS] Decoded icon size: ${decoded.width}x${decoded.height}');
+          debugPrint(
+            '[WEB APPS] Decoded icon size: ${decoded.width}x${decoded.height}',
+          );
         }
         final square = _makeLauncherIcon(decoded);
-        await file.writeAsBytes(Uint8List.fromList(img.encodePng(square)), flush: true);
+        await file.writeAsBytes(
+          Uint8List.fromList(img.encodePng(square)),
+          flush: true,
+        );
         if (kDebugMode) {
           debugPrint('[WEB APPS] Icon cached: ${file.path}');
           debugPrint('[WEB APPS] Shortcut will use real icon');
@@ -384,7 +429,8 @@ class WebAppInstallerController extends ChangeNotifier {
     if (aUri == null || bUri == null) return a == b;
     return aUri.scheme == bUri.scheme &&
         aUri.host == bUri.host &&
-        (aUri.path.isEmpty ? '/' : aUri.path) == (bUri.path.isEmpty ? '/' : bUri.path);
+        (aUri.path.isEmpty ? '/' : aUri.path) ==
+            (bUri.path.isEmpty ? '/' : bUri.path);
   }
 
   static String _resolveUrl(String base, String value) {
@@ -393,7 +439,11 @@ class WebAppInstallerController extends ChangeNotifier {
     return Uri.parse(base).resolve(value).toString();
   }
 
-  static List<String> _bestIconUrls(String baseUrl, dynamic manifestIcons, dynamic pageIcons) {
+  static List<String> _bestIconUrls(
+    String baseUrl,
+    dynamic manifestIcons,
+    dynamic pageIcons,
+  ) {
     final candidates = <Map<String, dynamic>>[];
     if (manifestIcons is List) {
       for (final icon in manifestIcons) {
@@ -420,10 +470,10 @@ class WebAppInstallerController extends ChangeNotifier {
             'priority': rel.contains('apple-touch-icon')
                 ? 1
                 : rel.contains('mask-icon')
-                    ? 2
-                    : rel.contains('shortcut')
-                        ? 4
-                        : 3,
+                ? 2
+                : rel.contains('shortcut')
+                ? 4
+                : 3,
           });
         }
       }
@@ -476,7 +526,8 @@ class WebAppInstallerController extends ChangeNotifier {
     return score;
   }
 
-  static bool _looksLikeSvg(String url) => url.toLowerCase().split('?').first.endsWith('.svg');
+  static bool _looksLikeSvg(String url) =>
+      url.toLowerCase().split('?').first.endsWith('.svg');
 
   static bool _isBlankImage(img.Image image) {
     final sampleStepX = max(1, image.width ~/ 24);
@@ -489,7 +540,8 @@ class WebAppInstallerController extends ChangeNotifier {
         final pixel = image.getPixel(x, y);
         final alpha = pixel.a.toInt();
         if (alpha > 12) visible++;
-        final argb = (alpha << 24) |
+        final argb =
+            (alpha << 24) |
             (pixel.r.toInt() << 16) |
             (pixel.g.toInt() << 8) |
             pixel.b.toInt();
@@ -509,7 +561,12 @@ class WebAppInstallerController extends ChangeNotifier {
       width: cropSize,
       height: cropSize,
     );
-    final resized = img.copyResize(cropped, width: 168, height: 168, interpolation: img.Interpolation.cubic);
+    final resized = img.copyResize(
+      cropped,
+      width: 168,
+      height: 168,
+      interpolation: img.Interpolation.cubic,
+    );
     final output = img.Image(width: 192, height: 192, numChannels: 4);
     img.fill(output, color: img.ColorRgba8(255, 255, 255, 255));
     img.compositeImage(output, resized, dstX: 12, dstY: 12);

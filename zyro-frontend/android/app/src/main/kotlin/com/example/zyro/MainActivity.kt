@@ -15,6 +15,7 @@ import android.graphics.RectF
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
 import android.graphics.pdf.PdfDocument
 import io.flutter.embedding.android.FlutterActivity
@@ -28,8 +29,16 @@ import android.webkit.WebView
 
 class MainActivity : FlutterActivity() {
     private val channelName = "zyro/downloads"
+    private val openWebAppAction = "com.example.zyro.OPEN_WEB_APP"
     private var webAppChannel: MethodChannel? = null
+    private var pendingWebAppUrl: String? = null
     private var initialShortcutUrl: String? = null
+    private var flutterEngineReady = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        handleWebAppShortcutIntent(intent, fromNewIntent = false)
+    }
     
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -52,7 +61,6 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
-        initialShortcutUrl = intent?.getStringExtra("zyro_web_app_url")
         webAppChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "zyro/web_apps")
         webAppChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
@@ -61,6 +69,9 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+        flutterEngineReady = true
+        android.util.Log.d("WEB_APPS", "Flutter engine ready")
+        deliverPendingWebAppUrl()
 
         val backgroundPlayerChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "zyro/background_player")
         backgroundPlayerChannel.setMethodCallHandler { call, result ->
@@ -142,11 +153,57 @@ class MainActivity : FlutterActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        val shortcutUrl = intent.getStringExtra("zyro_web_app_url")
-        if (!shortcutUrl.isNullOrBlank()) {
-            initialShortcutUrl = shortcutUrl
-            webAppChannel?.invokeMethod("webAppShortcutLaunched", mapOf("url" to shortcutUrl))
-            android.util.Log.d("WEB_APPS", "Shortcut launch intent received")
+        handleWebAppShortcutIntent(intent, fromNewIntent = true)
+        deliverPendingWebAppUrl()
+    }
+
+    private fun handleWebAppShortcutIntent(intent: Intent?, fromNewIntent: Boolean) {
+        if (intent == null) return
+
+        val action = intent.action
+        val source = intent.getStringExtra("web_app_source")
+        val shortcutUrl = intent.getStringExtra("web_app_url")
+            ?: intent.getStringExtra("zyro_web_app_url")
+        val isWebAppShortcut = action == openWebAppAction ||
+            source == "home_screen_shortcut" ||
+            !shortcutUrl.isNullOrBlank()
+
+        if (!isWebAppShortcut) return
+
+        android.util.Log.d("WEB_APPS", "Shortcut launch received in MainActivity")
+        if (shortcutUrl.isNullOrBlank() || !isValidWebAppUrl(shortcutUrl)) {
+            android.util.Log.e("WEB_APPS", "Invalid shortcut URL fallback to normal launch")
+            return
+        }
+
+        android.util.Log.d("WEB_APPS", "Shortcut URL extracted: $shortcutUrl")
+        pendingWebAppUrl = shortcutUrl
+        initialShortcutUrl = shortcutUrl
+        if (!fromNewIntent) {
+            android.util.Log.d("WEB_APPS", "Pending shortcut URL cached for Flutter")
+        }
+    }
+
+    private fun deliverPendingWebAppUrl() {
+        val shortcutUrl = pendingWebAppUrl
+        if (shortcutUrl.isNullOrBlank()) return
+
+        if (!flutterEngineReady || webAppChannel == null) {
+            android.util.Log.d("WEB_APPS", "Flutter engine not ready, keeping pending shortcut URL")
+            return
+        }
+
+        pendingWebAppUrl = null
+        android.util.Log.d("WEB_APPS", "Pending shortcut URL delivered")
+        webAppChannel?.invokeMethod("webAppShortcutLaunched", mapOf("url" to shortcutUrl))
+    }
+
+    private fun isValidWebAppUrl(url: String): Boolean {
+        return try {
+            val parsed = Uri.parse(url)
+            parsed.scheme == "http" || parsed.scheme == "https"
+        } catch (error: Exception) {
+            false
         }
     }
 
@@ -171,11 +228,16 @@ class MainActivity : FlutterActivity() {
         val iconPath = call.argument<String>("iconPath")
 
         val launchIntent = Intent(this, MainActivity::class.java).apply {
-            action = Intent.ACTION_VIEW
+            action = openWebAppAction
+            putExtra("web_app_id", id)
+            putExtra("web_app_name", name)
+            putExtra("web_app_url", url)
+            putExtra("web_app_source", "home_screen_shortcut")
             putExtra("zyro_web_app_url", url)
             putExtra("zyro_web_app_id", id)
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
+        android.util.Log.d("WEB_APPS", "Shortcut intent created with URL: $url")
 
         val iconBitmap = decodeShortcutIcon(name, iconPath)
         val shortcut = ShortcutInfo.Builder(this, id)

@@ -29,6 +29,7 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
   int _currentIndex = -1;
   bool _isFindingInPage = false;
   bool _isGlobalIncognito = false;
+  bool _sessionReady = false;
   final _uuid = const Uuid();
 
   RecentlyClosedTab? _recentlyClosedTab;
@@ -48,10 +49,13 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
   int get currentIndex => _currentIndex;
   bool get isFindingInPage => _isFindingInPage;
   bool get isGlobalIncognito => _isGlobalIncognito;
-  
+  bool get sessionReady => _sessionReady;
+
   TabModel? get currentTab {
     final allTabs = tabs;
-    return _currentIndex != -1 && _currentIndex < allTabs.length ? allTabs[_currentIndex] : null;
+    return _currentIndex != -1 && _currentIndex < allTabs.length
+        ? allTabs[_currentIndex]
+        : null;
   }
 
   TabManager() {
@@ -67,12 +71,16 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || 
-        state == AppLifecycleState.inactive || 
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
         state == AppLifecycleState.detached) {
-      print("[TAB LIFECYCLE LOG] App state changed to $state. Saving session...");
+      print(
+        "[TAB LIFECYCLE LOG] App state changed to $state. Saving session...",
+      );
       saveSession();
-      BackgroundPlayerService.handleAppMinimized(BackgroundPlayerService.isEnabled);
+      BackgroundPlayerService.handleAppMinimized(
+        BackgroundPlayerService.isEnabled,
+      );
     } else if (state == AppLifecycleState.resumed) {
       print("[TAB LIFECYCLE LOG] App state changed to $state.");
       BackgroundPlayerService.handleAppResumed();
@@ -130,7 +138,9 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
       }
 
       if (tabs.isEmpty) {
-        print("[TAB PERSISTENCE LOG] Restored session yielded 0 tabs. Aborting restore.");
+        print(
+          "[TAB PERSISTENCE LOG] Restored session yielded 0 tabs. Aborting restore.",
+        );
         return false;
       }
 
@@ -139,7 +149,9 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
         _currentIndex = 0;
       }
 
-      print("[TAB PERSISTENCE LOG] Tab session restored. Total tabs: ${tabs.length}, Active Index: $_currentIndex");
+      print(
+        "[TAB PERSISTENCE LOG] Tab session restored. Total tabs: ${tabs.length}, Active Index: $_currentIndex",
+      );
       notifyListeners();
       return true;
     } catch (e) {
@@ -153,12 +165,15 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
     if (!success) {
       addNewTab();
     }
+    _sessionReady = true;
+    print("[TAB PERSISTENCE LOG] TabManager ready");
+    notifyListeners();
   }
 
   void setGlobalIncognito(bool value) {
     if (_isGlobalIncognito == value) return;
     _isGlobalIncognito = value;
-    
+
     if (!_isGlobalIncognito) {
       // Clear all temporary data
       try {
@@ -167,14 +182,19 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
         for (var tab in tabs) {
           if (tab.isIncognito) {
             InAppWebViewController.clearAllCache();
-            tab.controller?.evaluateJavascript(source: "window.localStorage.clear(); window.sessionStorage.clear();");
+            tab.controller?.evaluateJavascript(
+              source:
+                  "window.localStorage.clear(); window.sessionStorage.clear();",
+            );
           }
         }
-        print("[INCOGNITO DEBUG] Cleaned all incognito browser cookies, caches, and storage.");
+        print(
+          "[INCOGNITO DEBUG] Cleaned all incognito browser cookies, caches, and storage.",
+        );
       } catch (e) {
         print("[INCOGNITO ERROR] Error cleaning incognito mode data: $e");
       }
-      
+
       // Close all incognito tabs
       final allTabs = List<TabModel>.from(tabs);
       for (var tab in allTabs) {
@@ -192,7 +212,7 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
           }
         }
       }
-      
+
       // If no normal tabs are left, create one
       if (_standaloneTabs.isEmpty) {
         addNewTab();
@@ -230,7 +250,9 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
             ),
             backgroundColor: Colors.indigo.shade600,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             duration: const Duration(seconds: 4),
             action: SnackBarAction(
               label: 'Got it',
@@ -270,7 +292,9 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
       TabGroup group;
       if (_groups.isNotEmpty) {
         group = _groups.last;
-        print("[TAB GROUP DEBUG] Existing active tab group found: ${group.name} (${group.id})");
+        print(
+          "[TAB GROUP DEBUG] Existing active tab group found: ${group.name} (${group.id})",
+        );
       } else {
         // Create new tab group
         final groupId = _uuid.v4();
@@ -282,7 +306,7 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
             domainName = host;
           }
         } catch (_) {}
-        
+
         group = TabGroup(
           id: groupId,
           name: '$domainName Group',
@@ -290,7 +314,9 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
           createdAt: DateTime.now(),
         );
         _groups.add(group);
-        print("[TAB GROUP DEBUG] No active tab group found. Created new group: ${group.name} (${group.id})");
+        print(
+          "[TAB GROUP DEBUG] No active tab group found. Created new group: ${group.name} (${group.id})",
+        );
       }
 
       final tabId = _uuid.v4();
@@ -305,13 +331,15 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
       );
 
       group.tabs.add(newTab);
-      
+
       // Update tab counts
       for (var tab in group.tabs) {
         tab.groupTabCount = group.tabs.length;
       }
 
-      print("[TAB GROUP DEBUG] Created grouped tab: $tabId, successfully inserted into group's tab collection.");
+      print(
+        "[TAB GROUP DEBUG] Created grouped tab: $tabId, successfully inserted into group's tab collection.",
+      );
 
       final allTabs = tabs;
       _currentIndex = allTabs.indexWhere((t) => t.id == tabId);
@@ -330,12 +358,16 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
     allTabs[index].isDesktopMode = !allTabs[index].isDesktopMode;
     final controller = allTabs[index].controller;
     if (controller != null) {
-      controller.setSettings(settings: InAppWebViewSettings(
-        preferredContentMode: allTabs[index].isDesktopMode ? UserPreferredContentMode.DESKTOP : UserPreferredContentMode.MOBILE,
-        userAgent: allTabs[index].isDesktopMode 
-          ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-          : '',
-      ));
+      controller.setSettings(
+        settings: InAppWebViewSettings(
+          preferredContentMode: allTabs[index].isDesktopMode
+              ? UserPreferredContentMode.DESKTOP
+              : UserPreferredContentMode.MOBILE,
+          userAgent: allTabs[index].isDesktopMode
+              ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+              : '',
+        ),
+      );
       controller.reload();
     }
     saveSession();
@@ -355,7 +387,7 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
     final allTabs = tabs;
     if (index >= 0 && index < allTabs.length) {
       final tab = allTabs[index];
-      
+
       final standaloneIndex = _standaloneTabs.indexOf(tab);
       int groupIndex = -1;
       TabGroup? groupObj;
@@ -371,8 +403,13 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
         try {
           InAppWebViewController.clearAllCache();
           CookieManager.instance().deleteAllCookies();
-          tab.controller?.evaluateJavascript(source: "window.localStorage.clear(); window.sessionStorage.clear();");
-          print("[INCOGNITO DEBUG] Cleared cookies, cache, and storage for closed incognito tab.");
+          tab.controller?.evaluateJavascript(
+            source:
+                "window.localStorage.clear(); window.sessionStorage.clear();",
+          );
+          print(
+            "[INCOGNITO DEBUG] Cleared cookies, cache, and storage for closed incognito tab.",
+          );
         } catch (e) {
           print("[INCOGNITO ERROR] Failed to clean incognito tab data: $e");
         }
@@ -422,7 +459,9 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
         _undoTimer?.cancel();
         _undoTimer = Timer(const Duration(seconds: 5), () {
           _recentlyClosedTab = null;
-          print("[TAB PERSISTENCE LOG] Undo window expired. finalizing tab close state.");
+          print(
+            "[TAB PERSISTENCE LOG] Undo window expired. finalizing tab close state.",
+          );
           saveSession();
         });
 
@@ -442,7 +481,9 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
               ),
               backgroundColor: Colors.blueGrey.shade800,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               duration: const Duration(seconds: 5),
               action: SnackBarAction(
                 label: 'UNDO',
@@ -467,25 +508,27 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
     if (_recentlyClosedTab == null) return;
     _undoTimer?.cancel();
     final closed = _recentlyClosedTab!;
-    
+
     if (closed.group != null) {
       final groupExists = _groups.any((g) => g.id == closed.group!.id);
       if (!groupExists) {
         _groups.add(closed.group!);
       }
-      
+
       final group = _groups.firstWhere((g) => g.id == closed.group!.id);
-      if (closed.originalGroupIndex >= 0 && closed.originalGroupIndex <= group.tabs.length) {
+      if (closed.originalGroupIndex >= 0 &&
+          closed.originalGroupIndex <= group.tabs.length) {
         group.tabs.insert(closed.originalGroupIndex, closed.tab);
       } else {
         group.tabs.add(closed.tab);
       }
-      
+
       for (var t in group.tabs) {
         t.groupTabCount = group.tabs.length;
       }
     } else {
-      if (closed.originalStandaloneIndex >= 0 && closed.originalStandaloneIndex <= _standaloneTabs.length) {
+      if (closed.originalStandaloneIndex >= 0 &&
+          closed.originalStandaloneIndex <= _standaloneTabs.length) {
         _standaloneTabs.insert(closed.originalStandaloneIndex, closed.tab);
       } else {
         _standaloneTabs.add(closed.tab);
@@ -496,15 +539,16 @@ class TabManager extends ChangeNotifier with WidgetsBindingObserver {
     if (_currentIndex >= tabs.length) {
       _currentIndex = tabs.length - 1;
     }
-    
+
     _recentlyClosedTab = null;
     print("[TAB UNDO LOG] Tab successfully undo-restored: ${closed.tab.title}");
-    
+
     saveSession();
     notifyListeners();
   }
 
-  void updateTab(String id, {
+  void updateTab(
+    String id, {
     String? url,
     String? title,
     double? progress,
