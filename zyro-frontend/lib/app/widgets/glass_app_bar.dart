@@ -5,7 +5,9 @@ import 'glass_container.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../../core/services/qr_code_url_service.dart';
 import '../../features/web_apps/controllers/web_app_installer_controller.dart';
+import 'page_qr_code_dialog.dart';
 
 class GlassAppBar extends StatefulWidget {
   final TabModel tab;
@@ -143,6 +145,15 @@ class _GlassAppBarState extends State<GlassAppBar> {
                     ),
                   IconButton(
                     icon: Icon(
+                      LucideIcons.qrCode,
+                      size: 18,
+                      color: theme.colorScheme.primary,
+                    ),
+                    tooltip: 'Page QR Code',
+                    onPressed: () => _showPageQrCode(context),
+                  ),
+                  IconButton(
+                    icon: Icon(
                       LucideIcons.rotateCcw,
                       size: 18,
                       color: theme.colorScheme.onSurface.withOpacity(0.5),
@@ -194,6 +205,30 @@ class _GlassAppBarState extends State<GlassAppBar> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
+  }
+
+  Future<void> _showPageQrCode(BuildContext context) async {
+    debugPrint('Address bar QR icon tapped');
+    final details = QrCodeUrlService.currentPage(widget.tab.url);
+    debugPrint('Current URL fetched');
+
+    if (details == null) {
+      debugPrint('Invalid URL for QR');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No page URL available'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    debugPrint('QR generated for current URL');
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => PageQrCodeDialog(details: details),
+    );
+    debugPrint('QR popup closed');
   }
 
   Widget _buildSecurityIndicator(ThemeData theme) {

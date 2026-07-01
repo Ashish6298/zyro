@@ -49,6 +49,7 @@ dependencies:
   url_launcher: ^6.2.5
   image: ^4.8.0
   pdf: ^3.11.3
+  qr_flutter: 4.1.0
 
 dev_dependencies:
   flutter_test:
