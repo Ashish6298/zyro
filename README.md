@@ -15,7 +15,7 @@
   <a href="#-project-structure">Structure</a> •
   <a href="#-installation--running">Installation</a> •
   <a href="#-platform-channels">Platform Channels</a> •
-  <a href="#-developer">Developer</a>
+  <a href="#developer">Developer</a>
 </p>
 
 <p align="center">
@@ -951,6 +951,8 @@ Please follow the existing feature-first directory structure and document any ne
 This project is licensed under the **MIT License**.
 
 ---
+
+<a id="developer"></a>
 
 ## 👨‍💻 Developer
 
