@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -22,6 +23,7 @@ import '../features/extensions/ad_blocker/services/ad_block_service.dart';
 import '../features/extensions/ad_blocker/services/ad_block_stats_service.dart';
 import '../features/permissions/models/permission_enums.dart';
 import '../features/permissions/services/website_permission_manager.dart';
+import '../features/usage/services/usage_tracking_service.dart';
 
 class WebViewWrapper extends StatefulWidget {
   final TabModel tab;
@@ -47,6 +49,7 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
   DownloadController? _downloadCtrl;
   DevToolsController? _devToolsCtrl;
   AdBlockStatsService? _adBlockStatsService;
+  UsageTrackingService? _usageTrackingService;
 
   @override
   void didChangeDependencies() {
@@ -57,6 +60,7 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
     _downloadCtrl = context.read<DownloadController>();
     _devToolsCtrl = context.read<DevToolsController>();
     _adBlockStatsService = context.read<AdBlockStatsService>();
+    _usageTrackingService = context.read<UsageTrackingService>();
   }
 
   @override
@@ -267,13 +271,28 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
           statsService: _adBlockStatsService!,
           extensionManager: _extensionManager!,
         );
-        return await adBlockService.interceptRequest(
+        final response = await adBlockService.interceptRequest(
           url: request.url.toString(),
           requestType: request.isForMainFrame == true
               ? 'document'
               : 'subresource',
           sourceUrl: widget.tab.url,
         );
+        if (response == null && !widget.tab.isIncognito) {
+          unawaited(
+            Future.microtask(
+              () => _usageTrackingService?.observeRequest(
+                url: request.url.toString(),
+                sourceUrl: widget.tab.url,
+                isMainFrame: request.isForMainFrame == true,
+                requestType: request.isForMainFrame == true
+                    ? 'document'
+                    : 'subresource',
+              ),
+            ),
+          );
+        }
+        return response;
       },
       shouldOverrideUrlLoading: (controller, navigationAction) async {
         return NavigationActionPolicy.ALLOW;
@@ -577,6 +596,12 @@ class _WebViewWrapperState extends State<WebViewWrapper> {
         );
         if (!widget.tab.isIncognito) {
           dataManager.addHistory(url.toString(), title);
+          _usageTrackingService?.observeRequest(
+            url: url.toString(),
+            sourceUrl: url.toString(),
+            isMainFrame: true,
+            requestType: 'document',
+          );
         }
 
         // Restore scroll position if saved

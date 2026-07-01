@@ -13,6 +13,7 @@ import 'features/extensions/ad_blocker/services/ad_block_stats_service.dart';
 import 'features/permissions/controllers/website_permissions_controller.dart';
 import 'features/permissions/services/website_permission_manager.dart';
 import 'features/screenshot_pro/controllers/screenshot_pro_controller.dart';
+import 'features/usage/services/usage_tracking_service.dart';
 import 'features/web_apps/controllers/web_app_installer_controller.dart';
 import 'features/web_apps/services/web_app_shortcut_channel.dart';
 
@@ -32,6 +33,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => DevToolsController()),
         ChangeNotifierProvider(create: (_) => AdBlockStatsService()),
         ChangeNotifierProvider(create: (_) => ScreenshotProController()),
+        ChangeNotifierProvider(create: (_) => UsageTrackingService()),
         ChangeNotifierProvider(create: (_) => WebAppInstallerController()),
         ChangeNotifierProvider<WebsitePermissionsController>(
           create: (_) {

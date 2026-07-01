@@ -30,7 +30,7 @@
 
 ## 🌌 Overview
 
-**Zyro Browser** is a premium, high-performance mobile web browser for Android built with Flutter, featuring a futuristic **Cyber-Bento** design language. It combines a high-fidelity Flutter client with a dedicated Node.js/FFmpeg media microservice — offering native ad blocking, smart video download, background audio playback, home screen web app installation, per-site permission management, full-page screenshot capture with PDF export, and a sandboxed extension ecosystem.
+**Zyro Browser** is a premium, high-performance mobile web browser for Android built with Flutter, featuring a futuristic **Cyber-Bento** design language. It combines a high-fidelity Flutter client with a dedicated Node.js/FFmpeg media microservice — offering native ad blocking, local internet usage analytics, smart video download, background audio playback, home screen web app installation, page QR sharing, per-site permission management, full-page screenshot capture with PDF export, and a sandboxed extension ecosystem.
 
 > ✨ Zyro is not a WebView wrapper with a thin UI shell. It is a **complete, vertically integrated browser stack** — from the Android foreground service layer through the Flutter extension engine to the Node.js stream extraction pipeline.
 
@@ -43,11 +43,13 @@
 | 🎨 **Cyber-Bento Design** | Glassmorphic, futuristic UI with Outfit typography and a deep indigo/teal/cyan palette |
 | 🛡️ **Native Ad Blocking** | Multi-layer request interceptor with 35+ rules blocking ads, trackers, beacons, and popunders |
 | 📊 **Ad Block Analytics** | Persistent per-domain blocked-request counters with daily reset and lifetime totals |
+| 📈 **Usage Analytics** | Local-only estimated internet usage by domain with today, monthly, and all-time views |
 | 🎵 **Background Playback** | Uninterrupted audio/video via Android `MediaSession` foreground service with lock-screen controls |
 | 🎬 **Smart Video Detection** | JavaScript-based detection across YouTube, Vimeo, Facebook, Instagram, Twitter/X, Dailymotion |
 | 📥 **Media Download Pipeline** | yt-dlp metadata extraction → adaptive stream download → FFmpeg merge → static file hosting |
 | 📸 **Screenshot Pro** | Floating capture button with viewport screenshot, full-page scrolling stitch, PNG save, A4 PDF export |
 | 📱 **Web App Installer** | Install any website as an Android home screen shortcut with manifest parsing and shortcut lifecycle sync |
+| ▣ **Page QR Code** | Address-bar QR action generates a compact scannable QR popup for the current page URL |
 | 🔐 **Website Permissions** | Per-site allow/ask/block controls for Camera, Microphone, Location, Notifications, and Clipboard |
 | 🔌 **Extension Ecosystem** | Sandboxed extension registry with install/uninstall/enable/disable lifecycle and persistent state |
 | 🗂️ **Tab Groups** | Full grouped tab management alongside standalone tabs with session persistence |
@@ -78,6 +80,25 @@
 | Reading list | ✅ Implemented (in-memory only) |
 | Favorites | ✅ Implemented (in-memory only) |
 | Share page | ✅ Implemented (`share_plus`) |
+| Address-bar Page QR Code | ✅ Implemented (`qr_flutter`) |
+
+</details>
+
+<details>
+<summary><strong>📈 Internet Usage Analytics</strong></summary>
+
+| Feature | Status |
+|---|---|
+| WebView request observation | ✅ Implemented |
+| Local domain normalization (`m.`, `www.` grouping) | ✅ Implemented |
+| Estimated bytes by website/domain | ✅ Implemented |
+| Today, this-month, and all-time totals | ✅ Implemented |
+| Top websites sorted by highest usage | ✅ Implemented |
+| Domain rows with favicon, usage, percentage, and progress bar | ✅ Implemented |
+| Persistent storage via `SharedPreferences` | ✅ Implemented |
+| Clear usage data with confirmation | ✅ Implemented |
+| Settings entry: Usage | ✅ Implemented |
+| Local-only privacy note | ✅ Implemented |
 
 </details>
 
@@ -135,6 +156,20 @@
 | Pinned shortcut ID synchronization | ✅ Implemented |
 | Shortcut launch handling on cold start | ✅ Implemented |
 | Shortcut launch handling on warm resume | ✅ Implemented |
+| Shortcut sync against pinned Android shortcuts | ✅ Implemented |
+
+</details>
+
+<details>
+<summary><strong>▣ Page QR Code</strong></summary>
+
+| Feature | Status |
+|---|---|
+| QR icon in the address bar | ✅ Implemented |
+| Current-page URL validation (`http`/`https` only) | ✅ Implemented |
+| Compact QR popup with domain and URL | ✅ Implemented |
+| High-contrast QR rendering via `qr_flutter` | ✅ Implemented |
+| Invalid/internal URL snackbar | ✅ Implemented |
 
 </details>
 
@@ -240,8 +275,8 @@
 │  │   ExtensionManager │ ScriptEngine                             │  │
 │  │                                                               │  │
 │  │   ──────────────── Feature Modules ────────────────────────  │  │
-│  │   Screenshot Pro │ Web Apps │ Permissions                     │  │
-│  │   Video Downloader │ Download Library │ Settings              │  │
+│  │   Screenshot Pro │ Web Apps │ Permissions │ Usage Analytics     │  │
+│  │   Video Downloader │ Download Library │ Settings │ Page QR       │  │
 │  └──────────────────────────┬────────────────────────────────────┘  │
 │                             │ MethodChannels                         │
 │  ┌──────────────────────────▼────────────────────────────────────┐  │
@@ -354,6 +389,22 @@ zyro/
 │   │       │       ├── permission_site_tile.dart
 │   │       │       ├── permission_status_selector.dart
 │   │       │       └── permission_summary_card.dart
+│   │       ├── usage/
+│   │       │   ├── controllers/usage_controller.dart
+│   │       │   ├── models/
+│   │       │   │   ├── usage_entry.dart
+│   │       │   │   └── usage_period.dart
+│   │       │   ├── services/
+│   │       │   │   ├── domain_usage_normalizer.dart
+│   │       │   │   ├── usage_format_service.dart
+│   │       │   │   ├── usage_storage_service.dart
+│   │       │   │   └── usage_tracking_service.dart
+│   │       │   ├── screens/usage_screen.dart
+│   │       │   └── widgets/
+│   │       │       ├── usage_period_filter.dart
+│   │       │       ├── usage_progress_bar.dart
+│   │       │       ├── usage_summary_card.dart
+│   │       │       └── usage_website_tile.dart
 │   │       ├── extensions/
 │   │       │   ├── ad_blocker/
 │   │       │   │   ├── models/ad_block_stats_model.dart
@@ -439,11 +490,12 @@ main.dart → MultiProvider → ZyroApp → SplashScreen → BrowserMainScreen
                 ├── AdBlockStatsService       ad block analytics
                 ├── ScreenshotProController   screenshot enable/expand state
                 ├── WebAppInstallerController installed apps + shortcut sync
-                └── WebsitePermissionsController per-site permission rules
+                ├── WebsitePermissionsController per-site permission rules
+                └── UsageTrackingService      local usage estimates by domain
 ```
 
 **State Management:** Flutter `Provider` / `ChangeNotifier` throughout.
-**Persistence:** `SharedPreferences` for all state (tabs, extensions, theme, permissions, ad block stats, screenshot settings, web apps).
+**Persistence:** `SharedPreferences` for all state (tabs, extensions, theme, permissions, ad block stats, screenshot settings, web apps, usage analytics).
 **Navigation:** Named `navigatorKey` with `globalScaffoldKey` for cross-context snackbar delivery.
 **Font:** Outfit (Google Fonts) via `GoogleFonts.outfit()`.
 **Icons:** `lucide_icons` for consistent iconography.
@@ -482,6 +534,7 @@ All Flutter↔Android communication is via `MethodChannel` in `MainActivity.kt`:
 | Component | Description |
 |---|---|
 | `GlassAppBar` | Glassmorphic address/search bar with smart URL/search routing |
+| `PageQrCodeDialog` | Compact current-page QR popup launched from the address bar |
 | `CyberMenu` | Slide-out Bento navigation drawer with logo, quick actions, and nav links |
 | `GlassContainer` | Reusable frosted-glass surface primitive |
 | `TabSwitcherScreen` | Full-screen tab manager with group support and undo close |
@@ -603,6 +656,39 @@ WebView onPageStarted / onPageFinished / onUrlChanged
                 ├── [youtube.com] → YouTubeAdBlockerService.cosmeticScript
                 └── [other] → CosmeticFilterInjector.cosmeticScript
 ```
+
+---
+
+## 📈 Internet Usage Analytics Workflow
+
+```
+WebView shouldInterceptRequest(url)
+        ├── AdBlockService.interceptRequest(url)
+        ├── [blocked] → do not count usage
+        └── [allowed] → UsageTrackingService.observeRequest(url, sourceUrl)
+                ├── DomainUsageNormalizer.normalize(url)
+                │       └── www.youtube.com / m.youtube.com → youtube.com
+                ├── Content-Length if available, otherwise safe byte estimate
+                ├── De-duplicate same URL estimate within the current minute
+                ├── UsageEntry.record()
+                │       ├── totalBytes
+                │       ├── monthlyBytes
+                │       ├── todayBytes
+                │       ├── requestCount
+                │       └── lastVisitedAt
+                └── UsageStorageService → SharedPreferences
+
+Settings → Usage
+        ├── Total data this month
+        ├── Total data today
+        ├── Today / This Month / All Time filters
+        ├── Top domains sorted by usage
+        └── Clear usage data confirmation
+```
+
+Usage values are estimates when response sizes are not exposed by the WebView request callback. Downloads and media requests observed inside the WebView are attributed to their source/request domain; internal app routes, local files, extension assets, screenshots, QR generation, and app UI assets are skipped.
+
+**Privacy note:** Usage Analytics are stored locally on your device and are used only to show your browsing data usage inside Zyro.
 
 ---
 
@@ -783,6 +869,7 @@ flutter build apk --release
 | Incognito mode | Global toggle — separate `ThemeMode`, session not persisted |
 | Ad/tracker blocking | 35+ regex rules at WebView request interception level |
 | Per-site permissions | Granular allow/ask/block per domain per resource type |
+| Usage analytics | Stored locally on device via `SharedPreferences`; never sent to a server |
 | Download URL sanitization | Strip UTM/tracking params before yt-dlp extraction |
 | Playlist download rejection | Reject YouTube playlist URLs without `v=` parameter |
 | Video height validation | FFmpeg-verified output resolution after merge |
@@ -803,6 +890,7 @@ flutter build apk --release
 | Flutter | `permission_handler ^11.4.0` | Android permissions |
 | Flutter | `image ^4.8.0` | PNG decode/encode/stitch |
 | Flutter | `pdf ^3.11.3` | PDF document generation |
+| Flutter | `qr_flutter 4.1.0` | Address-bar current-page QR rendering |
 | Flutter | `http ^1.2.1` | HTTP client (manifest/icon fetch) |
 | Flutter | `url_launcher ^6.2.5` | External URL launch |
 | Flutter | `share_plus ^7.2.2` | Native share sheet |

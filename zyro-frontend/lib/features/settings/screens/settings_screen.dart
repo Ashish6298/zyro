@@ -8,6 +8,7 @@ import 'developer_info_screen.dart';
 import '../../extensions/ad_blocker/widgets/ad_block_settings_stats_widget.dart';
 import '../../permissions/screens/website_permissions_screen.dart';
 import '../../screenshot_pro/controllers/screenshot_pro_controller.dart';
+import '../../usage/screens/usage_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -56,6 +57,17 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 24),
 
           _buildSectionHeader(theme, 'PRIVACY'),
+          SettingTile(
+            icon: LucideIcons.barChart3,
+            title: 'Usage',
+            subtitle: 'View local internet usage by website',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const UsageScreen()),
+              );
+            },
+          ),
           SettingTile(
             icon: LucideIcons.history,
             title: 'Clear History',
