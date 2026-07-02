@@ -49,3 +49,6 @@ app.*.map.json
 /backend/temp/
 /backend/downloads/
 /backend/.env
+
+# Local environment config
+/lib/core/.env.dart
