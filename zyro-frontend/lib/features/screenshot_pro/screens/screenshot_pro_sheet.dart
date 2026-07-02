@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import '../../../core/models/tab_model.dart';
+import '../../website_vault/controllers/website_vault_controller.dart';
 import '../models/screenshot_capture_result.dart';
 import '../services/full_page_capture_service.dart';
 import '../services/pdf_export_service.dart';
@@ -154,6 +156,16 @@ class ScreenshotProSheet extends StatelessWidget {
     try {
       final result = await action();
       if (context.mounted) Navigator.pop(context);
+      if (context.mounted) {
+        await context.read<WebsiteVaultController>().linkScreenshot(
+          title: result.title,
+          sourceUrl: result.url,
+          filePath: result.filePath,
+          mimeType: result.mimeType,
+          fileSize: result.fileSize,
+          captureType: result.captureType,
+        );
+      }
       if (context.mounted)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

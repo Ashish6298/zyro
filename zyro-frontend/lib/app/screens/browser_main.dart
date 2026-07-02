@@ -15,6 +15,7 @@ import 'tab_switcher.dart';
 import '../../features/video_downloader/widgets/floating_download_button.dart';
 import '../../features/screenshot_pro/controllers/screenshot_pro_controller.dart';
 import '../../features/screenshot_pro/widgets/screenshot_floating_button.dart';
+import '../../features/website_vault/controllers/website_vault_controller.dart';
 
 class BrowserMainScreen extends StatefulWidget {
   const BrowserMainScreen({super.key});
@@ -43,6 +44,15 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
           final item = dataManager.lastFinishedDownload!;
           dataManager.lastFinishedDownload =
               null; // Clear to prevent multiple notifications
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!context.mounted) return;
+            context.read<WebsiteVaultController>().linkDownload(
+              title: item.title,
+              sourceUrl: item.sourceUrl ?? item.pageUrl ?? item.url,
+              filePath: item.filePath,
+              fileSize: item.totalBytes,
+            );
+          });
 
           WidgetsBinding.instance.addPostFrameCallback((_) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -133,7 +143,10 @@ class _BrowserMainScreenState extends State<BrowserMainScreen> {
                   builder: (_, screenshotPro, __) {
                     if (!screenshotPro.enabled || currentTab.isIncognito)
                       return const SizedBox.shrink();
-                    return ScreenshotFloatingButton(controller: screenshotPro, tab: currentTab);
+                    return ScreenshotFloatingButton(
+                      controller: screenshotPro,
+                      tab: currentTab,
+                    );
                   },
                 ),
               ],

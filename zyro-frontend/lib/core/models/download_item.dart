@@ -11,6 +11,8 @@ class DownloadItem {
   int? totalBytes;
   int downloadedBytes;
   String? errorMessage;
+  final String? sourceUrl;
+  final String? pageUrl;
   final DateTime timestamp;
 
   DownloadItem({
@@ -25,6 +27,8 @@ class DownloadItem {
     this.totalBytes,
     this.downloadedBytes = 0,
     this.errorMessage,
+    this.sourceUrl,
+    this.pageUrl,
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
 }

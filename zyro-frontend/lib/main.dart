@@ -16,6 +16,7 @@ import 'features/screenshot_pro/controllers/screenshot_pro_controller.dart';
 import 'features/usage/services/usage_tracking_service.dart';
 import 'features/web_apps/controllers/web_app_installer_controller.dart';
 import 'features/web_apps/services/web_app_shortcut_channel.dart';
+import 'features/website_vault/controllers/website_vault_controller.dart';
 
 import 'features/extensions/background_player/background_player_service.dart';
 
@@ -35,6 +36,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => ScreenshotProController()),
         ChangeNotifierProvider(create: (_) => UsageTrackingService()),
         ChangeNotifierProvider(create: (_) => WebAppInstallerController()),
+        ChangeNotifierProvider(create: (_) => WebsiteVaultController()),
         ChangeNotifierProvider<WebsitePermissionsController>(
           create: (_) {
             final manager = WebsitePermissionManager.instance;

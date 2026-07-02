@@ -10,6 +10,7 @@ import '../screens/history_screen.dart';
 import '../screens/bookmarks_screen.dart';
 import '../../features/download_library/screens/downloads_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
+import '../../features/website_vault/screens/website_vault_screen.dart';
 import '../screens/extensions_screen.dart';
 import '../../core/theme/app_colors.dart';
 
@@ -247,6 +248,20 @@ class CyberMenu extends StatelessWidget {
                         context,
                         listen: false,
                       ).toggleFindInPage();
+                    },
+                  ),
+                  MenuCard(
+                    icon: LucideIcons.archive,
+                    label: 'WEBSITE VAULT',
+                    description: 'Organize site files',
+                    isImportant: true,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const WebsiteVaultScreen(),
+                        ),
+                      );
                     },
                   ),
                   MenuCard(

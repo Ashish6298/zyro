@@ -32,7 +32,8 @@ class BrowserDataManager extends ChangeNotifier {
   List<DownloadItem> get downloads => List.unmodifiable(_downloads);
   List<Map<String, String>> get readingList => List.unmodifiable(_readingList);
   List<Map<String, String>> get favorites => List.unmodifiable(_favorites);
-  List<Map<String, String>> get offlinePages => List.unmodifiable(_offlinePages);
+  List<Map<String, String>> get offlinePages =>
+      List.unmodifiable(_offlinePages);
 
   void addToReadingList(String url, String title) {
     if (_readingList.any((e) => e['url'] == url)) return;
@@ -54,12 +55,14 @@ class BrowserDataManager extends ChangeNotifier {
 
   void addHistory(String url, String title) {
     if (_history.isNotEmpty && _history.last.url == url) return;
-    _history.add(HistoryItem(
-      id: _uuid.v4(),
-      url: url,
-      title: title,
-      timestamp: DateTime.now(),
-    ));
+    _history.add(
+      HistoryItem(
+        id: _uuid.v4(),
+        url: url,
+        title: title,
+        timestamp: DateTime.now(),
+      ),
+    );
     notifyListeners();
   }
 
@@ -73,11 +76,7 @@ class BrowserDataManager extends ChangeNotifier {
     if (index != -1) {
       _bookmarks.removeAt(index);
     } else {
-      _bookmarks.add(BookmarkItem(
-        id: _uuid.v4(),
-        url: url,
-        title: title,
-      ));
+      _bookmarks.add(BookmarkItem(id: _uuid.v4(), url: url, title: title));
     }
     notifyListeners();
   }
@@ -112,6 +111,8 @@ class BrowserDataManager extends ChangeNotifier {
       url: normalizedUrl,
       title: title,
       resolution: resolution,
+      sourceUrl: sourceUrl,
+      pageUrl: pageUrl,
     );
     _downloads.insert(0, item);
     notifyListeners();
@@ -151,7 +152,11 @@ class BrowserDataManager extends ChangeNotifier {
           mimeType: mimeType,
           isAudio: isAudio,
         );
-        final fileName = _buildFileName(item, extension, suggestedFileName: suggestedFileName);
+        final fileName = _buildFileName(
+          item,
+          extension,
+          suggestedFileName: suggestedFileName,
+        );
         final filePath = p.join(zyroPath, fileName);
 
         await _downloadYoutubeToFile(item, filePath);
@@ -187,18 +192,20 @@ class BrowserDataManager extends ChangeNotifier {
       mimeType: mimeType,
       isAudio: isAudio,
     );
-    final fileName = _buildFileName(item, extension, suggestedFileName: suggestedFileName);
-    final result = await _downloadChannel.invokeMapMethod<String, dynamic>(
-      'enqueueDownload',
-      <String, dynamic>{
-        'url': item.url,
-        'title': item.title,
-        'description': item.title,
-        'fileName': fileName,
-        'subDirectory': 'zyro/$subFolder',
-        'mimeType': mimeType ?? _guessMimeType(extension, isAudio),
-      },
+    final fileName = _buildFileName(
+      item,
+      extension,
+      suggestedFileName: suggestedFileName,
     );
+    final result = await _downloadChannel
+        .invokeMapMethod<String, dynamic>('enqueueDownload', <String, dynamic>{
+          'url': item.url,
+          'title': item.title,
+          'description': item.title,
+          'fileName': fileName,
+          'subDirectory': 'zyro/$subFolder',
+          'mimeType': mimeType ?? _guessMimeType(extension, isAudio),
+        });
 
     if (result == null || result['downloadId'] == null) {
       throw const FileSystemException('Unable to start Android download');
@@ -209,7 +216,8 @@ class BrowserDataManager extends ChangeNotifier {
     notifyListeners();
 
     _downloadPollers[item.id]?.cancel();
-    _downloadPollers[item.id] = Timer.periodic(const Duration(milliseconds: 750), (_) async {
+    _downloadPollers[item
+        .id] = Timer.periodic(const Duration(milliseconds: 750), (_) async {
       try {
         final status = await _downloadChannel.invokeMapMethod<String, dynamic>(
           'queryDownload',
@@ -220,7 +228,8 @@ class BrowserDataManager extends ChangeNotifier {
           return;
         }
 
-        final downloadedBytes = (status['downloadedBytes'] as num?)?.toInt() ?? 0;
+        final downloadedBytes =
+            (status['downloadedBytes'] as num?)?.toInt() ?? 0;
         final totalBytes = (status['totalBytes'] as num?)?.toInt() ?? 0;
         final state = status['status'] as String? ?? 'UNKNOWN';
         final localPath = status['localPath'] as String?;
@@ -260,7 +269,10 @@ class BrowserDataManager extends ChangeNotifier {
     });
   }
 
-  Future<void> _downloadYoutubeToFile(DownloadItem item, String filePath) async {
+  Future<void> _downloadYoutubeToFile(
+    DownloadItem item,
+    String filePath,
+  ) async {
     final ytClient = yt.YoutubeExplode();
     try {
       final videoId = yt.VideoId.parseVideoId(item.url);
@@ -362,7 +374,8 @@ class BrowserDataManager extends ChangeNotifier {
     String extension, {
     String? suggestedFileName,
   }) {
-    final baseName = suggestedFileName != null && suggestedFileName.trim().isNotEmpty
+    final baseName =
+        suggestedFileName != null && suggestedFileName.trim().isNotEmpty
         ? p.basenameWithoutExtension(suggestedFileName)
         : item.title;
     final cleanTitle = baseName.replaceAll(RegExp(r'[^\w\s-]+'), '_').trim();
@@ -392,7 +405,8 @@ class BrowserDataManager extends ChangeNotifier {
     if (mimeType?.contains('webm') == true) {
       return '.webm';
     }
-    if (mimeType?.contains('mpeg') == true || mimeType?.contains('mp3') == true) {
+    if (mimeType?.contains('mpeg') == true ||
+        mimeType?.contains('mp3') == true) {
       return '.mp3';
     }
 
@@ -429,6 +443,7 @@ class BrowserDataManager extends ChangeNotifier {
       url: url,
       title: title,
       resolution: resolution,
+      sourceUrl: url,
     );
     _downloads.insert(0, item);
     notifyListeners();
@@ -464,7 +479,11 @@ class BrowserDataManager extends ChangeNotifier {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.download_done_rounded, color: Colors.cyanAccent, size: 20),
+            const Icon(
+              Icons.download_done_rounded,
+              color: Colors.cyanAccent,
+              size: 20,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
