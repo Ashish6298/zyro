@@ -34,7 +34,16 @@
 
 > ✨ Zyro is not a WebView wrapper with a thin UI shell. It is a **complete, vertically integrated browser stack** — from the Android foreground service layer through the Flutter extension engine to the Node.js stream extraction pipeline.
 
----
+<br>
+
+## ⚠️ Current Status
+> Zyro is under active development. Most features are fully functional and stable. One exception:
+>
+> - **Video downloads** currently require the Node.js/FFmpeg backend to be **self-hosted** (running on `localhost` or your local network). It is **not yet deployed to a public server**, so downloads won't work out-of-the-box if you just install the APK without also running the backend yourself. See [Installation & Running](#-installation--running) to set it up locally.
+>
+> Everything else — browsing, tabs, ad blocking, screenshots, permissions, background playback, web app install, page QR, extensions — works as documented below.
+
+<br>
 
 ## 🚀 Why Zyro Browser?
 
@@ -946,11 +955,56 @@ Please follow the existing feature-first directory structure and document any ne
 
 ---
 
-## 📄 License
+## Website Vault
 
-This project is licensed under the **MIT License**.
+Website Vault is a local-first organization feature that gives every website/domain its own vault for important saved material. Users can keep website-related pages, links, screenshots, PDFs, downloads, notes, receipts, invoices, tracking pages, order pages, and other useful references grouped by domain instead of manually searching across downloads, history, bookmarks, and screenshots.
+
+### Key Capabilities
+
+| Capability | Description |
+|---|---|
+| Quick Actions entry | Website Vault is available from the existing Quick Actions page with the same Cyber-Bento visual language |
+| Domain dashboard | Lists websites/domains with saved item counts, latest activity, storage usage, favicons, and category chips |
+| Domain details | Shows saved vault items grouped by Screenshots, PDFs, Links, Downloads, Notes, Receipts/Invoices, and Pages |
+| Search and filtering | Search by domain, title, URL, tags, note text, and saved item name; filter items by type inside a domain |
+| Save current page | Save the active page/link directly into the current website vault |
+| Screenshot Pro integration | Saved screenshots and PDFs can be associated with the source website vault |
+| Download integration | Downloaded files can be linked to the source website when the source URL is available |
+| Manual entries | Add notes and useful links directly from the Website Vault screen |
+| Item actions | Open, Share, Rename, Delete, and Copy Link where applicable |
+| Safe deletion | Deleting a vault item removes only the vault entry unless the user explicitly confirms local file deletion |
+
+### Data Model
+
+Website Vault uses `WebsiteVaultItem`, `WebsiteVaultDomainSummary`, and `WebsiteVaultType` models under `lib/features/website_vault/models/`.
+
+Metadata is persisted locally through the app's existing local persistence approach, and vault files are organized under a clear domain-based folder structure such as:
+
+```text
+Zyro/Vault/<domain>/
+```
+
+### Privacy
+
+Website Vault is stored locally on your device. Vault metadata and saved files are not uploaded to a server.
 
 ---
+
+
+</div>
+
+
+<br>
+
+## 📄 License
+
+This project is licensed under the **MIT License** — see the [LICENSE](./LICENSE) file for full details.
+
+You're free to use, modify, and distribute this code, provided the original copyright notice is retained.
+
+---
+
+<br>
 
 <a id="developer"></a>
 
@@ -988,43 +1042,6 @@ This project is licensed under the **MIT License**.
 
 </div>
 
----
-
-## Website Vault
-
-Website Vault is a local-first organization feature that gives every website/domain its own vault for important saved material. Users can keep website-related pages, links, screenshots, PDFs, downloads, notes, receipts, invoices, tracking pages, order pages, and other useful references grouped by domain instead of manually searching across downloads, history, bookmarks, and screenshots.
-
-### Key Capabilities
-
-| Capability | Description |
-|---|---|
-| Quick Actions entry | Website Vault is available from the existing Quick Actions page with the same Cyber-Bento visual language |
-| Domain dashboard | Lists websites/domains with saved item counts, latest activity, storage usage, favicons, and category chips |
-| Domain details | Shows saved vault items grouped by Screenshots, PDFs, Links, Downloads, Notes, Receipts/Invoices, and Pages |
-| Search and filtering | Search by domain, title, URL, tags, note text, and saved item name; filter items by type inside a domain |
-| Save current page | Save the active page/link directly into the current website vault |
-| Screenshot Pro integration | Saved screenshots and PDFs can be associated with the source website vault |
-| Download integration | Downloaded files can be linked to the source website when the source URL is available |
-| Manual entries | Add notes and useful links directly from the Website Vault screen |
-| Item actions | Open, Share, Rename, Delete, and Copy Link where applicable |
-| Safe deletion | Deleting a vault item removes only the vault entry unless the user explicitly confirms local file deletion |
-
-### Data Model
-
-Website Vault uses `WebsiteVaultItem`, `WebsiteVaultDomainSummary`, and `WebsiteVaultType` models under `lib/features/website_vault/models/`.
-
-Metadata is persisted locally through the app's existing local persistence approach, and vault files are organized under a clear domain-based folder structure such as:
-
-```text
-Zyro/Vault/<domain>/
-```
-
-### Privacy
-
-Website Vault is stored locally on your device. Vault metadata and saved files are not uploaded to a server.
-
----
-
 <div align="center">
 
 <img src="https://capsule-render.vercel.app/api?type=rect&color=0:5B8FB9,50:B6EADA,100:301E67&height=3&section=footer" width="220"/>
@@ -1034,5 +1051,3 @@ Website Vault is stored locally on your device. Vault metadata and saved files a
 <sub>
 🌐 Built with Flutter, Node.js &amp; FFmpeg &nbsp;•&nbsp; Crafted by Ashish Goswami
 </sub>
-
-</div>
