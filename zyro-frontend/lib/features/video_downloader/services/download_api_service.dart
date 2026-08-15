@@ -1,4 +1,6 @@
 import 'dart:convert';
+
+import '../../../core/.env.dart';
 import 'package:http/http.dart' as http;
 
 class DownloadApiService {
@@ -6,7 +8,7 @@ class DownloadApiService {
 
   // Default to the deployed backend; a custom URL can still be injected for local development.
   DownloadApiService({String? baseUrl})
-      : baseUrl = baseUrl ?? 'https://zyro-backend-zkht.onrender.com';
+    : baseUrl = baseUrl ?? Environment.downloaderApiBaseUrl;
 
   Future<Map<String, dynamic>> fetchMetadata(String url) async {
     try {
@@ -22,10 +24,14 @@ class DownloadApiService {
         return jsonDecode(response.body) as Map<String, dynamic>;
       } else {
         final errorBody = jsonDecode(response.body);
-        throw Exception(errorBody['error'] ?? 'Server error (${response.statusCode})');
+        throw Exception(
+          errorBody['error'] ?? 'Server error (${response.statusCode})',
+        );
       }
     } on Exception catch (e) {
-      throw Exception('Backend unreachable: $e\n\nMake sure your backend is running and run:\nadb reverse tcp:3000 tcp:3000');
+      throw Exception(
+        'Backend unreachable: $e\n\nMake sure your backend is running and run:\nadb reverse tcp:3000 tcp:3000',
+      );
     }
   }
 
@@ -54,7 +60,9 @@ class DownloadApiService {
         final errorBody = jsonDecode(response.body);
         throw Exception(errorBody['error'] ?? 'Failed to start download task');
       } catch (_) {
-        throw Exception('Failed to start download task (Status code: ${response.statusCode})');
+        throw Exception(
+          'Failed to start download task (Status code: ${response.statusCode})',
+        );
       }
     }
   }
