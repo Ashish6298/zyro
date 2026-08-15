@@ -15,6 +15,7 @@ async function downloadStream(url, formatId, outputPath, onProgress) {
       // Downloading in small ranged chunks refreshes the request throughout
       // the transfer without changing the selected format or output.
       httpChunkSize: '1M',
+      extractorArgs: 'youtube:player_client=android_vr',
       ...getYoutubeAuthOptions()
     });
 

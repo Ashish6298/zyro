@@ -13,6 +13,7 @@ async function extractMetadata(url) {
       noPlaylist: true,
       noCacheDir: true,
       noCheckCertificates: true,
+      extractorArgs: 'youtube:player_client=android_vr',
       ...getYoutubeAuthOptions(),
     });
 
