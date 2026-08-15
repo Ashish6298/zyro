@@ -1,5 +1,6 @@
 const youtubedl = require('youtube-dl-exec');
 const { sanitizeSingleVideoUrl } = require('./urlSanitizer.service');
+const { getYoutubeAuthOptions } = require('./youtubeAuth.service');
 
 async function extractMetadata(url) {
   try {
@@ -12,6 +13,7 @@ async function extractMetadata(url) {
       noPlaylist: true,
       noCacheDir: true,
       noCheckCertificates: true,
+      ...getYoutubeAuthOptions(),
     });
 
     // Check if the metadata contains multiple entries (playlist response)

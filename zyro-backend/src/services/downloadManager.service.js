@@ -1,4 +1,5 @@
 const youtubedl = require('youtube-dl-exec');
+const { getYoutubeAuthOptions } = require('./youtubeAuth.service');
 
 async function downloadStream(url, formatId, outputPath, onProgress) {
   try {
@@ -13,7 +14,8 @@ async function downloadStream(url, formatId, outputPath, onProgress) {
       // YouTube can reject a single long-lived media request with HTTP 403.
       // Downloading in small ranged chunks refreshes the request throughout
       // the transfer without changing the selected format or output.
-      httpChunkSize: '1M'
+      httpChunkSize: '1M',
+      ...getYoutubeAuthOptions()
     });
 
     if (child.stdout) {
