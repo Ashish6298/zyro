@@ -4,10 +4,9 @@ import 'package:http/http.dart' as http;
 class DownloadApiService {
   final String baseUrl;
 
-  // Android emulator uses 10.0.2.2 to reach the host machine's localhost.
-  // Physical devices need `adb reverse tcp:3000 tcp:3000` then use localhost:3000.
+  // Default to the deployed backend; a custom URL can still be injected for local development.
   DownloadApiService({String? baseUrl})
-      : baseUrl = baseUrl ?? 'http://10.0.2.2:3000';
+      : baseUrl = baseUrl ?? 'https://zyro-backend-zkht.onrender.com';
 
   Future<Map<String, dynamic>> fetchMetadata(String url) async {
     try {
