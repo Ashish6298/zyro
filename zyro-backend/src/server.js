@@ -17,6 +17,10 @@ app.use('/downloads', express.static(fileManager.getDownloadsDir()));
 // Mount routes
 app.use('/api/video', downloadRoutes);
 
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ success: true, status: 'ok' });
+});
+
 app.get('/', (req, res) => {
   res.json({ success: true, message: 'Zyro Downloader Backend is active' });
 });
